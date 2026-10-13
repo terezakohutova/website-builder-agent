@@ -1,0 +1,13 @@
+$ QA_PAGES=index-de.html node wheel.mjs examples/sample-site/_dist 1440
+
+### index-de.html (w=1440)
+  load            {"y":0,"watch":null}
+  down x3         {"y":600,"watch":null}
+  down x10 more   {"y":1347,"watch":null}
+  UP x4           {"y":547,"watch":null}
+  down x6         {"y":1347,"watch":null}
+  UP to top       {"y":0,"watch":null}
+
+1 pages, 0 findings
+
+[exit 0, 5.8 s]

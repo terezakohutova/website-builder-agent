@@ -125,7 +125,7 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 - Sets `<html lang>` from the file name; enforces one `<h1>` (extras demoted, warned); reports heading skips and vague link texts per language ("click here", "more").
 - **Length checks as warnings:** title <= 60 incl. the brand suffix, description 140-160, no em/en dashes in title/description (they render oddly in some SERPs and were a house style rule).
 - **Figure-consistency report:** regex patterns for every number you claim (users, transactions, markets, ratings, percentages, "top N", "X of 10") list every visible occurrence per file and language. The single best tool for catching contradictions across 60 pages x 5 languages. Build one for any figure you claim.
-- **Independent read-only verifier:** one SEO block per page, `lang` set, JSON-LD parses, title equals table, no dashes, every `<img>` has alt, no master language in translated heads/alts, **`node --check` on every inline `<script>`**.
+- **Independent read-only verifier:** one SEO block per page, `lang` set, JSON-LD parses, title equals table, no dashes, every `<img>` has alt, no master language in translated heads/alts, **every inline `<script>` and `on*` handler syntax-checked (`jscheck.mjs`)**.
 
 ### 2.2 Head block per page
 title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1` or `noindex,nofollow`), self canonical, hreflang for all languages + x-default, og:site_name/type/title/description/url/image (1200x630)/image:alt/locale + `og:locale:alternate` per sibling, twitter `summary_large_image`, theme-color, application-name, `apple-itunes-app`, favicon set + manifest, `<link rel="alternate" type="text/plain" href="/llms.txt">`, JSON-LD.
@@ -253,7 +253,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 - [ ] Self canonical = served clean URL = og:url; hreflang reciprocal + x-default, language codes (`cs`, not `cz`); hidden pages noindex and out of every machine file.
 - [ ] JSON-LD parses, types match visible content, FAQPage first when an FAQ is present.
 - [ ] Every img has an alt in the page language or is decorative; width/height proven by a render diff; hero eager + `fetchpriority`, rest lazy.
-- [ ] Inline scripts pass `node --check`; console clean at 390 and 1440 px, before and after consent.
+- [ ] Inline scripts and handlers pass `jscheck.mjs`; console clean at 390 and 1440 px, before and after consent.
 
 **Site files and hosting**
 - [ ] robots.txt allow-all + AI crawler groups + Sitemap; sitemap only indexable URLs with lastmod from finished pages; llms.txt parser-valid, legal section outside Optional; llms-full and `ai/*.json` re-derived from `_dist/`.

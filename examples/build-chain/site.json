@@ -1,0 +1,26 @@
+{
+  "base_url": "https://lumen-notes.example",
+  "master": "en",
+  "x_default": "en",
+  "languages": { "en": "EN", "de": "DE" },
+  "pages": {
+    "index.html": {
+      "languages": ["en", "de"],
+      "seo": {
+        "en": { "title": "Lumen Notes - a fictional note app (sample site)",
+                "description": "A fictional two-language sample site used to demonstrate and test the QA harness in this repository. Lumen Notes is not a real product." },
+        "de": { "title": "Lumen Notes - eine erfundene Notiz-App (Beispielseite)",
+                "description": "Eine erfundene zweisprachige Beispielseite, mit der das QA-Werkzeug in diesem Repository getestet wird. Lumen Notes ist kein echtes Produkt." }
+      }
+    },
+    "privacy.html": {
+      "languages": ["en"],
+      "seo": {
+        "en": { "title": "Privacy - Lumen Notes (sample site)",
+                "description": "What the fictional Lumen Notes sample site stores: one key in localStorage, nothing else." }
+      }
+    }
+  },
+  "keep": ["Lumen Notes", "FAQ", "Offline", "OK", "Cookies", "qa-report/"],
+  "leftover_pattern": { "en": "\\b(the|and|with|your|you|is|are|this|that|for|of)\\b" }
+}

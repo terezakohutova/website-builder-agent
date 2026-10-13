@@ -17,6 +17,9 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      # GitHub sets CI=true: the browser tests then fail instead of skipping when Chrome is missing
+      CHROME_ARGS: --no-sandbox
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,18 +31,27 @@ jobs:
 
       - name: Syntax-check every script
         run: |
-          for f in .claude/skills/website-build/scripts/qa/*.mjs .claude/skills/website-build/scripts/qa/*.js examples/*.mjs tests/*.mjs; do
+          for f in .claude/skills/website-build/scripts/qa/*.mjs .claude/skills/website-build/scripts/qa/*.js examples/*.mjs examples/build-chain/assets/*.js tests/*.mjs; do
             node --check "$f"
           done
-          python -m py_compile .claude/skills/website-build/scripts/backup/snapshot.py tests/*.py
+          python -m py_compile .claude/skills/website-build/scripts/backup/snapshot.py examples/build-chain/*.py tests/*.py
 
       - name: Every relative link in the docs resolves
         run: python tests/check_links.py
 
-      - name: snapshot.py self-test
+      - name: Python tests (snapshot.py, reference build chain)
         run: python -m unittest discover -s tests -v
 
-      - name: QA harness tests (argument handling + headless Chrome)
-        env:
-          CHROME_ARGS: --no-sandbox
-        run: node --test "tests/*.test.mjs"
+      - name: axe-core for the axe.mjs tests
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/axe" axe-core@4.10.2
+          echo "AXE_PATH=$RUNNER_TEMP/axe/node_modules/axe-core/axe.min.js" >> "$GITHUB_ENV"
+
+      - name: QA harness tests (no browser + headless Chrome, one Chrome at a time)
+        run: node --test --test-concurrency=1 "tests/*.test.mjs"
+
+      - name: Reference build chain, then the QA harness on its output
+        run: |
+          python examples/build-chain/build.py
+          node .claude/skills/website-build/scripts/qa/jscheck.mjs examples/sample-site/_dist
+          node .claude/skills/website-build/scripts/qa/audit.mjs examples/sample-site/_dist

@@ -17,8 +17,8 @@ The generic harness is in `../scripts/qa/` (usage in its README). Paths below: `
 2. **Run the full matrix, not a sample.** In the real build a nav auto-hide fix "worked" on a spot check and
    failed 18 of 24 page x width combinations; only a 12-page x 2-width OK/FAIL table caught it.
 3. **A page that renders proves nothing.** One `\x01` control byte in an inline script killed an interactive
-   feature on every page while everything looked fine. `node --check` every inline `<script>` and scan for
-   control characters before every publish (`jscheck.mjs`).
+   feature on every page while everything looked fine. Syntax-check every inline `<script>` and `on*` handler
+   the way the browser parses them, and scan for control characters, before every publish (`jscheck.mjs`).
 4. **Test through the scroll library, not around it.** Smooth-scroll libraries (Lenis and similar) swallow
    `scrollTo`/`scrollIntoView` (scrollY stays 0). Drive real wheel events, or call the library's own
    `scrollTo(y, {immediate:true, force:true})`.
@@ -44,11 +44,12 @@ The generic harness is in `../scripts/qa/` (usage in its README). Paths below: `
 ### Why raw CDP
 - In the real build both the browser-extension automation and the Playwright MCP failed to connect. Node 22+
   has a global `WebSocket`, which is all a CDP client needs: zero npm installs, nothing to break.
-- `cdp.mjs` (~200 lines): `launch(port)` spawns `chrome --headless=new --remote-debugging-port
+- `cdp.mjs` (~430 lines): `launch(port)` spawns `chrome --headless=new --remote-debugging-port
   --user-data-dir=<tmp> --disable-gpu --hide-scrollbars --force-device-scale-factor=1
   --allow-file-access-from-files` and polls `/json/version`; `connect()` creates a target, attaches with
   `flatten:true`, enables Page/Runtime/Log/Network; `goto()` sets `Emulation.setDeviceMetricsOverride`, clears
-  the event buffer, navigates, waits for `Page.loadEventFired` + a settle delay; `ev()` = `Runtime.evaluate
+  the event buffer, navigates, waits for `Page.loadEventFired`, fonts and network idle (capped), and fails the
+  page on a navigation error, an HTTP >= 400 main document or a load timeout; `ev()` = `Runtime.evaluate
   {returnByValue, awaitPromise}`; `shot()`; `consoleErrors()` from `Log.entryAdded` (error),
   `Runtime.exceptionThrown` and `console.error`.
 - Heavier tools (Puppeteer, Lighthouse, axe-core, Playwright for WebKit) were added only for specific audits;
@@ -313,7 +314,7 @@ Every FAIL becomes a fix pass plus a regression check in the harness.
 ## 10. Pre-publish checklist
 
 - [ ] Build from clean; all review passes applied with zero "target vanished" failures.
-- [ ] `jscheck.mjs`: every inline script passes `node --check`; no control characters.
+- [ ] `jscheck.mjs`: every inline script, module and `on*` handler parses; no control characters.
 - [ ] `audit.mjs` over all pages x full width set: 0 overflow, 0 broken images, 0 console errors.
 - [ ] Copy dump read; structure and heading-wrap probes clean; spelling checked per language.
 - [ ] Anchors, language switch, redirects/aliases, download links and QR codes verified.

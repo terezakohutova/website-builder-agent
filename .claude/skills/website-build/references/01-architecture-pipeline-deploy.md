@@ -118,7 +118,7 @@ my-site/                      # its own git repo from the first file (see sectio
   `pip install pillow imageio-ffmpeg`.
 - **Node** (recent LTS, global `fetch`/`WebSocket`) + **terser** with `compress:false, mangle:false` in a
   `strip-comments.mjs` - removes comments and whitespace only, never changes behaviour.
-- `node --check` for every inline script (section 9).
+- Syntax-check every inline script and event handler with `scripts/qa/jscheck.mjs` (section 9).
 - **A tiny JS string-literal lexer** (`jslex.py`) so i18n builders can translate strings inside inline
   scripts without touching code or comments.
 
@@ -147,7 +147,10 @@ my-site/                      # its own git repo from the first file (see sectio
 
 ## 4. The build chain (in order) and why the order matters
 
-One command builds everything, a second builds the deploy copy:
+One command builds everything, a second builds the deploy copy. A small working version of steps B, C, D
+and G (typography injector, exact-match i18n builder with an untranslated/leftover check, SEO
+post-processor between markers, sitemap with hash-based lastmod) and of the build lock in section 11 ships
+with this skill's repository as `examples/build-chain/`; read it before writing your own.
 
 ```bash
 bash build/build-all.sh && python build/build-deploy.py
@@ -307,7 +310,7 @@ Make the builder's docstring the spec. It should:
 |---|---|
 | Menu links pointed at old absolute paths; page templates had stale home links | Fix links in the shared shell/template, not per page; check every link form |
 | Externally supplied site with relative links published per-page -> all nav 404 | Check the link model before publishing anything from outside |
-| Python `re.sub` replacement `"\1..."` (non-raw) injected byte 0x01 into an inline script; a JS feature died on all pages | Raw strings for replacements; `assert '\x01' not in s` before writing; `node --check` every inline script |
+| Python `re.sub` replacement `"\1..."` (non-raw) injected byte 0x01 into an inline script; a JS feature died on all pages | Raw strings for replacements; `assert '\x01' not in s` before writing; syntax-check every inline script (`jscheck.mjs`) |
 | Two sessions published the same site six times; broken JS went live again | One session publishes, others edit only; rebase on live before publishing |
 | Literal string anchors matched on one page but not others (whitespace drift) | Patch with `re.subn` + `\s*`, assert match count `== 1` |
 | Shell heredoc turned `\b` into a backspace byte (0x08); regex silently never matched | Write regex-heavy scripts with the Write tool; grep for `\x08` after scripted edits |
@@ -326,9 +329,13 @@ Make the builder's docstring the spec. It should:
 ## 9. Verification before anything ships
 
 1. Build is complete and alone: no other build process, lock released, `0 SEO warnings` (`verify.py`).
-2. Every inline script parses: extract with
-   `re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', s, re.S)`, write each to a temp `.js`,
-   `node --check` it. JSON-LD blocks: `json.loads`. (A real check covered ~530 inline scripts + ~60 JSON-LD.)
+2. Every inline script parses the way the browser parses it: `node scripts/qa/jscheck.mjs <dir>`. The first
+   version (a `<script(?![^>]*\bsrc=)` regex plus `node --check` on a temp `.js`) had four holes, found in a
+   later review: `data-src=` matched as `src=` and skipped the script, `data-type` was read as `type`,
+   `node --check` treats a `.js` file as CommonJS so a top-level `return` passed, and `onclick="..."` handlers
+   were never parsed. jscheck reads attributes by name, compiles classic scripts as scripts, modules as
+   modules and handlers as function bodies. JSON-LD blocks: `json.loads`. (The real check covered ~530 inline
+   scripts + ~60 JSON-LD.)
 3. No control characters: `\x01`, `\x08` absent from every written file.
 4. Assets resolve: the optimiser prints `missing asset references: 0` (make it fail otherwise).
 5. Browser QA on a local server at 360/390/430/1280/1440 px: 0 horizontal overflow, 0 console errors, real

@@ -9,7 +9,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SKIP_DIRS = {'.git', 'node_modules', '.versions'}
+SKIP_DIRS = {'.git', 'node_modules', '.versions', '_dist', '.build'}
 MD_LINK = re.compile(r'(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)|!\[[^\]]*\]\(([^)\s]+)\)')
 HTML_LINK = re.compile(r'\b(?:href|src)\s*=\s*"([^"]+)"', re.I)
 

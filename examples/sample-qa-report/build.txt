@@ -1,0 +1,7 @@
+$ python examples/build-chain/build.py
+built index-de.html (de)
+built index.html (en)
+built privacy.html (en)
+wrote sitemap.xml; 3 pages -> <repo>\examples\sample-site\_dist
+
+[exit 0, 0.3 s]

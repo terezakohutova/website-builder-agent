@@ -1,7 +1,8 @@
 {
- "file:///<repo>/examples/sample-site/index-de.html": {
+ "file:///<repo>/examples/sample-site/_dist/index-de.html": {
   "320": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 320,
    "winW": 320,
@@ -9,6 +10,7 @@
   },
   "360": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 360,
    "winW": 360,
@@ -16,6 +18,7 @@
   },
   "390": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 390,
    "winW": 390,
@@ -23,6 +26,7 @@
   },
   "430": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 430,
    "winW": 430,
@@ -30,6 +34,7 @@
   },
   "768": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 768,
    "winW": 768,
@@ -37,6 +42,7 @@
   },
   "1024": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1024,
    "winW": 1024,
@@ -44,6 +50,7 @@
   },
   "1280": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1280,
    "winW": 1280,
@@ -51,15 +58,17 @@
   },
   "1440": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1440,
    "winW": 1440,
    "errs": []
   }
  },
- "file:///<repo>/examples/sample-site/index.html": {
+ "file:///<repo>/examples/sample-site/_dist/index.html": {
   "320": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 320,
    "winW": 320,
@@ -67,6 +76,7 @@
   },
   "360": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 360,
    "winW": 360,
@@ -74,6 +84,7 @@
   },
   "390": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 390,
    "winW": 390,
@@ -81,6 +92,7 @@
   },
   "430": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 430,
    "winW": 430,
@@ -88,6 +100,7 @@
   },
   "768": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 768,
    "winW": 768,
@@ -95,6 +108,7 @@
   },
   "1024": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1024,
    "winW": 1024,
@@ -102,6 +116,7 @@
   },
   "1280": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1280,
    "winW": 1280,
@@ -109,15 +124,17 @@
   },
   "1440": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1440,
    "winW": 1440,
    "errs": []
   }
  },
- "file:///<repo>/examples/sample-site/privacy.html": {
+ "file:///<repo>/examples/sample-site/_dist/privacy.html": {
   "320": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 320,
    "winW": 320,
@@ -125,6 +142,7 @@
   },
   "360": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 360,
    "winW": 360,
@@ -132,6 +150,7 @@
   },
   "390": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 390,
    "winW": 390,
@@ -139,6 +158,7 @@
   },
   "430": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 430,
    "winW": 430,
@@ -146,6 +166,7 @@
   },
   "768": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 768,
    "winW": 768,
@@ -153,6 +174,7 @@
   },
   "1024": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1024,
    "winW": 1024,
@@ -160,6 +182,7 @@
   },
   "1280": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1280,
    "winW": 1280,
@@ -167,6 +190,7 @@
   },
   "1440": {
    "overflow": [],
+   "clipped": 0,
    "img": [],
    "docW": 1440,
    "winW": 1440,

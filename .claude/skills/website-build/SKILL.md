@@ -52,5 +52,6 @@ This file is the route; the references hold the detail.
 Paths are relative to this skill folder. `node scripts/qa/jscheck.mjs site/_dist` first, then
 `node scripts/qa/audit.mjs <folder-or-url>` with `QA_WIDTHS=1440x900,1280x800,1024x768,768x1024,430x932,390x844,360x780,320x700`,
 then `anchors.mjs`, `modes.mjs`, `console-sweep.mjs`, `shots.mjs` (look at the screenshots yourself),
-and `inapp.mjs` for WebKit plus the Instagram/Facebook/TikTok in-app browsers. Every script exits 2 on bad
-usage; the checking ones exit 1 on a finding. Checklists: `04`, sections "pre-publish" and "post-deploy".
+and `inapp.mjs` for WebKit plus the Instagram/Facebook/TikTok in-app browsers. Every script follows one
+exit-code contract: 0 clean, 1 findings (including a page that fails to load), 2 bad usage, 3 could not run
+(Chrome, axe-core or Playwright missing). Checklists: `04`, sections "pre-publish" and "post-deploy".

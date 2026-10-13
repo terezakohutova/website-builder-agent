@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python -I .claude/skills/website-build/scripts/backup/snapshot.py hook",
+            "command": "python -I \"$CLAUDE_PROJECT_DIR/.claude/skills/website-build/scripts/backup/snapshot.py\" hook",
             "statusMessage": "Saving a version of the file..."
           }
         ]

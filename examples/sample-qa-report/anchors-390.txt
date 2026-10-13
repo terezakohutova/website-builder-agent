@@ -1,6 +1,6 @@
-$ node anchors.mjs examples/sample-site 390
-ok   index-de.html page #funktionen -> top 76 
-ok   index-de.html page #ablauf -> top 76 
+$ node anchors.mjs examples/sample-site/_dist 390
+ok   index-de.html page #features -> top 76 
+ok   index-de.html page #how -> top 76 
 ok   index-de.html page #faq -> top 260 
 ok   index.html page #features -> top 76 
 ok   index.html page #how -> top 76 
@@ -8,4 +8,4 @@ ok   index.html page #faq -> top 287
 
 0 failing anchors
 
-[exit 0, 24.0 s]
+[exit 0, 6.5 s]

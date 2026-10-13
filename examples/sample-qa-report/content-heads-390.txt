@@ -1,3 +1,5 @@
-$ node content.mjs examples/sample-site heads - 390
+$ node content.mjs examples/sample-site/_dist heads - 390
 
-[exit 0, 4.1 s]
+3 pages, 0 findings
+
+[exit 0, 2.6 s]

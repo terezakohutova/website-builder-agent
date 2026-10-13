@@ -1,4 +1,4 @@
-$ node content.mjs examples/sample-site struct
+$ node content.mjs examples/sample-site/_dist struct
 
 ### index-de.html - none
 
@@ -6,4 +6,6 @@ $ node content.mjs examples/sample-site struct
 
 ### privacy.html - none
 
-[exit 0, 4.0 s]
+3 pages, 0 findings
+
+[exit 0, 2.4 s]

@@ -243,7 +243,7 @@ The values below are illustrative (not any real brand's palette); what carries o
 - Dark line at the bottom of a screen mid-slide -> baked shadow in the export + subpixel transform -> clip each panel, crop at 102 %.
 - Home link parked next to the close button -> auto margin on a flex item overrides stretch -> `width:100%`.
 - Language row squashed to 0 height on phones -> flex item shrinking in an overflowing column -> `flex-shrink:0`.
-- Game stopped site-wide -> `\1` in a non-raw Python replacement = byte 0x01 in an inline script -> raw strings + `node --check` every inline script.
+- Game stopped site-wide -> `\1` in a non-raw Python replacement = byte 0x01 in an inline script -> raw strings + syntax-check every inline script (`jscheck.mjs`).
 - Nav never came back after closing the menu -> capture-phase listener read stale state -> MutationObserver.
 - Small icon as big as the QR at 900-1100 px -> source order -> more specific / later rule.
 - Page CSS wiped by a re-injection -> CSS placed inside the injected block -> own `data-page-pass` block.

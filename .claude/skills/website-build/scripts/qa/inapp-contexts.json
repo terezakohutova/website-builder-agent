@@ -1,0 +1,20 @@
+{
+  "updated": "2026-10-13",
+  "note": "User-agent strings age: the app version numbers (Instagram, FBAV, musical_ly), iOS and Chrome versions drift every few weeks and some sites sniff them. Refresh from a real device or a UA log at least every 6 months, then update 'updated'. inapp.mjs prints a warning when this date is older than 180 days.",
+  "base": {
+    "ios": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+    "android": "Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0.6668.100 Mobile Safari/537.36"
+  },
+  "contexts": [
+    { "id": "ios-safari", "eng": "webkit", "dev": "iPhone 13", "ua": "{ios} Version/18.5 Mobile/15E148 Safari/604.1" },
+    { "id": "ios-instagram", "eng": "webkit", "dev": "iPhone 13", "ua": "{ios} Mobile/15E148 Instagram 350.0.0.30.98 (iPhone14,5; iOS 18_5; en_US; en; scale=3.00; 1170x2532; 650000000)", "vh": 664 },
+    { "id": "ios-facebook", "eng": "webkit", "dev": "iPhone 13", "ua": "{ios} Mobile/15E148 [FBAN/FBIOS;FBAV/480.0.0.40.108;FBBV/650000000;FBDV/iPhone14,5;FBMD/iPhone;FBSN/iOS;FBSV/18.5;FBSS/3;FBCR/;FBID/phone;FBLC/en_US;FBOP/80]", "vh": 640 },
+    { "id": "ios-tiktok", "eng": "webkit", "dev": "iPhone 13", "ua": "{ios} Mobile/15E148 musical_ly_36.5.0 JsSdk/2.0 NetType/WIFI Channel/App Store ByteLocale/en Region/US isDarkMode/1 WKWebView/1 BytedanceWebview/d8a21c6", "vh": 650, "dark": true },
+    { "id": "ios-safari-landscape", "eng": "webkit", "dev": "iPhone 13 landscape", "ua": "{ios} Version/18.5 Mobile/15E148 Safari/604.1" },
+    { "id": "ipad-safari", "eng": "webkit", "dev": "iPad (gen 7)" },
+    { "id": "mac-safari", "eng": "webkit", "dev": "Desktop Safari" },
+    { "id": "android-instagram", "eng": "chromium", "dev": "Pixel 7", "ua": "{android} Instagram 350.0.0.42.86 Android (34/14; 420dpi; 1080x2400; Google; Pixel 7; panther; gs201; en_US; 650000000)", "vh": 700 },
+    { "id": "android-facebook", "eng": "chromium", "dev": "Pixel 7", "ua": "{android} [FB_IAB/FB4A;FBAV/480.0.0.45.108;]", "vh": 690 },
+    { "id": "android-tiktok", "eng": "chromium", "dev": "Pixel 7", "ua": "{android} musical_ly_2023605030 JsSdk/1.0 NetType/WIFI Channel/googleplay AppName/musical_ly app_version/36.5.3 ByteLocale/en Region/US", "vh": 700, "dark": true }
+  ]
+}

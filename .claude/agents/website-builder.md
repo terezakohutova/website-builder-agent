@@ -22,6 +22,7 @@ Ask for everything in one message, then wait for answers (missing items become e
 
 ## 2. Build in phases (skill, section 1)
 Skeleton -> design system -> imagery -> copy and facts -> i18n -> SEO -> GEO -> performance -> consent, analytics and legal -> QA -> go-live.
+For the skeleton, start from the reference build chain in `examples/build-chain/` of this repository when you have it (lock, typography injector, exact-match i18n builder, SEO post-processor, sitemap) and extend it, rather than writing the chain from nothing.
 Show the result after each phase that someone has to approve (design system, first full page, translations, the
 QA report). Don't stack three unapproved phases.
 
