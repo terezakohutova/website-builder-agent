@@ -64,9 +64,11 @@ site, starting from `examples/build-chain/`.
 ## Use it in your project
 
 1. Copy `.claude/agents/website-builder.md` and `.claude/skills/website-build/` into your project's `.claude/`.
-   Copy `examples/build-chain/` too if you want a starting point for the build.
+   Also copy `examples/build-chain/` and `examples/settings.hooks.json` to the same paths in your project
+   (`examples/...`): the agent looks for the build chain and the hook config there, and they are not part of
+   the skill folder.
 2. Optional, recommended: merge `examples/settings.hooks.json` into `.claude/settings.json`, so every file edit is
-   versioned into `.versions/`, and add `.versions/` to `.gitignore`. The hook command uses
+   versioned into `.versions/` (hook errors are printed and logged to `.versions/_errors.log`, never block the edit), and add `.versions/` to `.gitignore`. The hook command uses
    `$CLAUDE_PROJECT_DIR`, so it works from any working directory. On macOS and most Linux systems change
    `python` to `python3` in the hook command.
 3. Ask Claude Code: *"Use the website-builder agent to build a site for ..."*. It asks for the brief first.

@@ -12,9 +12,12 @@
 //   QA_LOAD_TIMEOUT  ms to wait for the load event before the page fails (default 30000)
 //   QA_IDLE_CAP      ms to wait for network idle after load (default 3000; idle = no request for 500 ms)
 //   QA_CMD_TIMEOUT   ms before a single CDP command fails (default 30000)
+//   QA_PORT          pin the DevTools port (default: a free port Chrome picks; the browser is always verified)
+//   QA_MOBILE_MAX    widths up to this many px get mobile + touch emulation (default 820)
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:net';
 import { join, dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -62,10 +65,17 @@ export function main(fn) {
   });
 }
 
-// launch(port, { args }) - headless Chrome with a throwaway profile. Use a different port per
-// parallel process (two launches on one port = the second attaches to the first browser).
-export async function launch(port = 9333, { args = [], gpu = false } = {}) {
+// launch(port, { args }) - headless Chrome with a throwaway profile.
+// port 0 (the default, unless QA_PORT is set): Chrome picks a free port itself, so parallel runs never
+// collide and a stray browser on a fixed port is never reached. Chrome then writes
+// <profile>/DevToolsActivePort (port + browser socket path) into the profile THIS run created, and the
+// /json/version answer on that port must name the same socket.
+// An explicit QA_PORT: Chrome writes no DevToolsActivePort for a fixed port, so the port is checked BEFORE
+// launch instead: if anything already listens on it, the run stops (exit 3) rather than attach to it.
+export async function launch(port = qaPort(), { args = [], gpu = false } = {}) {
   hookSignals();
+  if (port && !(await portFree(port)))
+    throw new CouldNotRun(`port ${port} is already in use (a stray browser?), and whatever listens there is not the Chrome this run launched; unset QA_PORT or pick a free port`);
   const prof = mkdtempSync(join(tmpdir(), 'webqa-'));
   const extra = (process.env.CHROME_ARGS || '').split(/\s+/).filter(Boolean);
   const p = spawn(CHROME, [
@@ -78,16 +88,53 @@ export async function launch(port = 9333, { args = [], gpu = false } = {}) {
   let spawnError = null, exited = false;
   p.on('error', e => { spawnError = e; });
   p.on('exit', () => { exited = true; });
-  let info = null;
+  const fail = msg => { cleanup(); return new CouldNotRun(msg); };
+  let info = null, stranger = null;
   for (let i = 0; i < 80 && !spawnError && !exited; i++) {
-    try { info = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); break; }
-    catch { await wait(250); }
+    if (port) {
+      // the port was free before launch, so what answers on it now is the browser this run started
+      try { info = { ...(await (await fetch(`http://127.0.0.1:${port}/json/version`)).json()), port }; break; }
+      catch { /* not listening yet */ }
+    } else {
+      const own = readActivePort(prof);
+      if (own) {
+        try {
+          const v = await (await fetch(`http://127.0.0.1:${own.port}/json/version`)).json();
+          if (new URL(v.webSocketDebuggerUrl).pathname === own.path) { info = { ...v, port: own.port }; break; }
+          stranger = `port ${own.port} answered with ${v.Browser || 'something'}`;
+        } catch { /* not listening yet */ }
+      }
+    }
+    await wait(250);
   }
-  if (!info) {
-    cleanup();
-    throw new CouldNotRun(`chrome did not start on port ${port} (CHROME_PATH=${CHROME}${spawnError ? ', ' + spawnError.message : ''})`);
-  }
-  return { proc: p, port, wsUrl: info.webSocketDebuggerUrl };
+  if (!info && stranger)
+    throw fail(`${stranger}, which is not the Chrome this run launched (a stray browser?); unset QA_PORT or pick a free port`);
+  if (!info) throw fail(`chrome did not start on port ${port || 'auto'} (CHROME_PATH=${CHROME}${spawnError ? ', ' + spawnError.message : ''})`);
+  return { proc: p, port: info.port, wsUrl: info.webSocketDebuggerUrl };
+}
+
+// QA_PORT pins the DevTools port (e.g. to watch a run from outside); default 0 = a free port picked by Chrome.
+function qaPort() {
+  const v = process.env.QA_PORT;
+  if (v === undefined || v === '') return 0;
+  if (!/^\d{1,5}$/.test(v) || +v > 65535) throw new UsageError(`QA_PORT: "${v}" is not a port number`);
+  return +v;
+}
+
+// true when nothing listens on 127.0.0.1:port (we can bind it ourselves for a moment)
+function portFree(port) {
+  return new Promise(res => {
+    const srv = createServer();
+    srv.once('error', () => res(false));
+    srv.listen(port, '127.0.0.1', () => srv.close(() => res(true)));
+  });
+}
+
+function readActivePort(prof) {
+  try {
+    const [port, path] = readFileSync(join(prof, 'DevToolsActivePort'), 'utf8').split(/\r?\n/);
+    return /^\d+$/.test(port) && path ? { port: +port, path } : null;
+  } catch { return null; }
 }
 
 // ---- session ---------------------------------------------------------------------------------
@@ -174,9 +221,9 @@ export async function connect(wsUrl) {
   return s;
 }
 
-// launch + connect in one call (the common case)
-export async function open(defaultPort, opts) {
-  const b = await launch(+(process.env.QA_PORT || defaultPort), opts);
+// launch + connect in one call (the common case). Port: QA_PORT, else a free one (see launch).
+export async function open(opts) {
+  const b = await launch(qaPort(), opts);
   return { ...b, s: await connect(b.wsUrl) };
 }
 
@@ -407,7 +454,19 @@ export async function listPages(target) {
   return filt ? urls.filter(u => filt.some(x => u.includes(x))) : urls;
 }
 
-// QA_WIDTHS="1440x900,390x844" -> [[1440,900,false],[390,844,true]] (mobile when width < 600)
+// Mobile emulation (mobile viewport + touch) for widths up to QA_MOBILE_MAX px (default 820), so a 768 or
+// 820 px tablet is tested as the touch device it is, not as a small desktop.
+export function mobileMax() {
+  const v = process.env.QA_MOBILE_MAX;
+  if (v === undefined || v === '') return 820;
+  if (!/^\d{1,5}$/.test(v)) throw new UsageError(`QA_MOBILE_MAX: "${v}" is not a width in px`);
+  return +v;
+}
+export const isMobile = w => w <= mobileMax();
+// Default height for a bare width: phone 844, tablet 1024, desktop 900.
+export const defaultHeight = w => (w < 600 ? 844 : isMobile(w) ? 1024 : 900);
+
+// QA_WIDTHS="1440x900,390x844" -> [[1440,900,false],[390,844,true]] (mobile when width <= QA_MOBILE_MAX)
 // A bare width ("390") gets a default height. Anything else that is not WxH throws, so a typo fails loudly
 // instead of reaching Chrome as a NaN viewport.
 export function widths(def = '1440x900,390x844') {
@@ -415,7 +474,7 @@ export function widths(def = '1440x900,390x844') {
     const m = /^(\d{2,5})(?:x(\d{2,5}))?$/i.exec(x);
     if (!m) throw new UsageError(`QA_WIDTHS: "${x}" is not WxH (e.g. 390x844)`);
     const w = +m[1];
-    return [w, m[2] ? +m[2] : (w < 600 ? 844 : 900), w < 600];
+    return [w, m[2] ? +m[2] : defaultHeight(w), isMobile(w)];
   });
 }
 

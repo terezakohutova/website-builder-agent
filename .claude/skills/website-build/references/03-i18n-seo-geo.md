@@ -44,7 +44,7 @@ A typical chain, run by one `build-all.sh` that holds a lock file (two parallel 
 - **How a builder translates:**
   1. Mask `<script>`, `<style>`, comments.
   2. Translate JS string literals via a small JS lexer (not regex on raw JS).
-  3. Translate text nodes `>...<` whose `strip()` is an **exact key** in `strings-<lang>.json`.
+  3. Translate block elements with inline markup as one key with numbered placeholders (`You can {0}sync{/0} later.`), so the translation can reorder words around the tags (German puts the verb last); then text nodes `>...<` whose `strip()` is an **exact key** in `strings-<lang>.json` as the fallback. Per-fragment keys alone force master word order on every language.
   4. Translate attributes `alt|aria-label|title|placeholder` + `meta description`.
   5. Apply edits last-to-first, drop overlaps.
   6. **Fail** if any master key is untranslated. Print "master-language-looking leftovers" (regex on characters typical of the master language, e.g. diacritics).
@@ -55,7 +55,7 @@ A typical chain, run by one `build-all.sh` that holds a lock file (two parallel 
 - **Page CSS must not go into an injector-owned block.** An injector that replaces its own `<style data-typo>` block wiped page CSS someone had appended there. Page CSS goes into its own `<style data-page-pass>`.
 - **List the anchors builders depend on** (data attributes, footer entity strings, figure-format anchors, icon hashes) in the builder header with asserts. Changing one silently breaks a language or fails the build.
 - **Trap: generator vs data.** If a language's copy lives in a JSON that a helper script *generates*, edit the JSON (or the generator input), never the output. Otherwise the next run reverts it.
-- **Link localisation:** home links -> `index-<lang>.html` (except language-switch links carrying `hreflang`); page links -> `<name>-<lang>.html` **only if that file exists on disk** (so builder order matters).
+- **Link localisation:** resolve every internal link (bare, `/root-relative`, `./`, `../`) against the page it is on before matching it to a page; warn about internal links that cannot be localised. Home links -> `index-<lang>.html` (except language-switch links carrying `hreflang`); page links -> `<name>-<lang>.html` **only if that file exists on disk** (so builder order matters).
 - **Special pages outside the builders** (e.g. a market-only legal notice, a double-opt-in thank-you page): everything that decides "which language is this file" must know them, or they get master-language chrome (cookie bar, footer, link campaigns, event `lang`). Keep **one** `page -> language` function and import it everywhere (QA scripts, injectors, consent, links, events).
 - **Presence checks:** never test for a link by a bare substring that also appears inside scripts (`'legal.html' in page` matched a string inside a shared JS file, so the footer link was never added). Match the markup itself (`href="legal.html"`).
 
@@ -144,7 +144,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 
 ### 2.5 Sitemap, lastmod, robots, 404, hosting, consoles
 - **Sitemap:** indexable pages only, each with hreflang alternates + x-default.
-- **lastmod must mean "content changed", not "build ran":** hash each **finished** page's visible content (minus `dateModified`), keep the previous date if unchanged (store fingerprints in a JSON), bump sitemap `<lastmod>` and JSON-LD `dateModified` together; fail if a sitemap URL has no page.
+- **lastmod must mean "content changed", not "build ran":** hash each **finished** page's visible content (minus `dateModified`), keep the previous date if unchanged (store fingerprints in a JSON that is committed with the source: in a gitignored folder a clean CI checkout stamps every page with today), bump sitemap `<lastmod>` and JSON-LD `dateModified` together; fail if a sitemap URL has no page.
 - **robots.txt:** `User-agent: *` `Allow: /` plus explicit Allow groups for AI and search crawlers (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Google-Extended, Googlebot, Bingbot, Applebot, Applebot-Extended, CCBot, Amazonbot, meta-externalagent, DuckAssistBot, MistralAI-User, YandexBot/SeznamBot or other local engines) + `Sitemap:` line. The wildcard already covers them; explicit groups are belt-and-braces and document intent. Also check your CDN/WAF isn't bot-blocking them.
 - **Soft-404 trap:** a catch-all proxy to the old site answered every unknown URL with 200 and an old indexable page. Fix: proxy only an allow-list of old paths that really exist (diff the old site's URL list), 301 retired sections to home, real `404.html`. A fallback must never answer 200 for unknown paths.
 - **Preview hosts:** `X-Robots-Tag: noindex, nofollow` on every host except the production one (header rule conditioned on host). Ignore that header when auditing a preview. Apex -> www (or the reverse), one direction only.

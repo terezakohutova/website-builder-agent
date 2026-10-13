@@ -7,4 +7,4 @@ ok     privacy.html 1440
 ok     privacy.html 390
 urls 3 | pre-consent with issues 0 | post-consent with issues 0 -> <repo>\examples\sample-qa-report\console-sweep.json
 
-[exit 0, 5.7 s]
+[exit 0, 6.5 s]

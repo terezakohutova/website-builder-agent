@@ -38,12 +38,14 @@ const steps = [
   { name: 'console-sweep', args: ['console-sweep.mjs', SITE, join(OUT, 'console-sweep.json')], expect: 0 },
 ];
 
-let port = 9800, failed = 0;
+// no QA_PORT: every step lets Chrome pick a free port (the default path users run)
+const baseEnv = { ...process.env }; delete baseEnv.QA_PORT;
+let failed = 0;
 const rows = [];
 for (const st of steps) {
   const t0 = Date.now();
   const [bin, argv] = st.cmd ? [st.cmd[0], st.cmd.slice(1)] : [process.execPath, [join(QA, st.args[0]), ...st.args.slice(1)]];
-  const r = spawnSync(bin, argv, { cwd: ROOT, encoding: 'utf8', timeout: 600000, env: { ...process.env, QA_PORT: String(port++), ...(st.env || {}) } });
+  const r = spawnSync(bin, argv, { cwd: ROOT, encoding: 'utf8', timeout: 600000, env: { ...baseEnv, ...(st.env || {}) } });
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   const shown = st.cmd ? st.cmd.join(' ') : `node ${st.args[0]} ${st.args.slice(1).join(' ')}`;
   const log = scrub(`$ ${Object.entries(st.env || {}).map(([k, v]) => `${k}=${v} `).join('')}${shown}\n` +
@@ -59,7 +61,7 @@ for (const f of ['audit.json', 'console-sweep.json']) if (existsSync(join(OUT, f
 // environment, read from the browser itself
 const { launch } = await import(pathToFileURL(join(QA, 'cdp.mjs')).href);
 let browser = 'unknown';
-try { const { proc, port: p } = await launch(port++); browser = (await (await fetch(`http://127.0.0.1:${p}/json/version`)).json()).Browser; proc.kill(); } catch (e) { browser = 'not started: ' + e.message; }
+try { const { proc, port: p } = await launch(0); browser = (await (await fetch(`http://127.0.0.1:${p}/json/version`)).json()).Browser; proc.kill(); } catch (e) { browser = 'not started: ' + e.message; }
 const py = spawnSync(PY, ['--version'], { encoding: 'utf8' });
 const env = `date: ${new Date().toISOString().slice(0, 10)}\nnode: ${process.version}\npython: ${((py.stdout || '') + (py.stderr || '')).trim() || 'not found'}\nbrowser: ${browser}\nos: ${os.type()} ${os.release()} (${process.platform})\n`;
 writeFileSync(join(OUT, 'environment.txt'), env);

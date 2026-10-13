@@ -39,7 +39,7 @@ class BuildChainTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.src = os.path.join(self.tmp.name, 'site')
-        shutil.copytree(SAMPLE, self.src, ignore=shutil.ignore_patterns('_dist', '.build'))
+        shutil.copytree(SAMPLE, self.src, ignore=shutil.ignore_patterns('_dist', '.build', 'lastmod.json'))
         self.out = os.path.join(self.src, '_dist')
 
     def tearDown(self):
@@ -78,9 +78,10 @@ class BuildChainTest(unittest.TestCase):
         self.assertIn('<!--langs:start--><a class="lang" href="index-de.html" hreflang="de" lang="de">DE</a><!--langs:end-->', self.read('index.html'))
         self.assertTrue(os.path.isfile(os.path.join(self.out, 'assets', 'typo.js')))
         self.assertTrue(os.path.isfile(os.path.join(self.out, 'assets', 'site.css')))
-        # the source pages are only read (the build writes .build/ state and _dist/, nothing else)
+        # the source pages are only read (the build writes lastmod.json, the .build/ lock folder and _dist/, nothing else)
         shutil.rmtree(self.out)
         shutil.rmtree(os.path.join(self.src, '.build'))
+        os.remove(os.path.join(self.src, 'lastmod.json'))
         self.assertEqual(tree_hash(self.src), before)
 
     def test_seo_block_hreflang_and_json_ld(self):
@@ -201,6 +202,38 @@ class BuildChainTest(unittest.TestCase):
         self.assertIn('taking over a stale lock', r.stderr)
         self.assertFalse(os.path.exists(self.lock_path()), 'released after the build')
 
+    def test_a_fresh_lock_of_a_dead_process_is_taken_over_at_once(self):
+        p = subprocess.Popen([sys.executable, '-c', 'pass'])
+        p.wait()
+        self.plant_lock(p.pid, time.time())   # the owner crashed a second ago: no 45-minute wait
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('taking over', r.stderr)
+
+    def test_a_takeover_in_progress_blocks_a_second_takeover(self):
+        p = subprocess.Popen([sys.executable, '-c', 'pass'])
+        p.wait()
+        self.plant_lock(p.pid, time.time() - 7200)
+        open(self.lock_path() + '.takeover', 'x').close()   # another build is taking over right now
+        r = self.build()
+        self.assertEqual(r.returncode, 3, r.stderr)
+        self.assertIn('taking over', r.stderr)
+
+    def test_concurrent_takeovers_let_exactly_one_build_through(self):
+        p = subprocess.Popen([sys.executable, '-c', 'pass'])
+        p.wait()
+        self.plant_lock(p.pid, time.time() - 7200)
+        code = ('import sys, time; sys.path.insert(0, sys.argv[1]); import buildlock\n'
+                'try:\n'
+                '    l = buildlock.BuildLock(sys.argv[2]).acquire()\n'
+                'except buildlock.LockHeld:\n'
+                '    print("HELD"); sys.exit(0)\n'
+                'print("GOT"); sys.stdout.flush(); time.sleep(1.5); l.release()\n')
+        procs = [subprocess.Popen([sys.executable, '-c', code, CHAIN, self.lock_path()], stdout=subprocess.PIPE,
+                                  stderr=subprocess.DEVNULL, text=True) for _ in range(6)]
+        outs = [pr.communicate(timeout=60)[0].strip() for pr in procs]
+        self.assertEqual(outs.count('GOT'), 1, outs)
+
     def test_release_leaves_a_lock_that_is_no_longer_ours(self):
         lock = buildlock.BuildLock(os.path.join(self.tmp.name, 'lk')).acquire()
         with open(lock.info, 'w') as f:
@@ -220,6 +253,137 @@ class BuildChainTest(unittest.TestCase):
         self.assertIn('var s = "Hello";', out)
         self.assertIn('<!-- Hello -->', out)
         self.assertIn('<html lang="de">', out)
+
+    # --- links (item: root-relative, ./ and ../ links) ------------------------------------------------------
+    def test_root_relative_dot_and_parent_links_are_localised(self):
+        page_langs = {'index.html': ['en', 'de'], 'privacy.html': ['en', 'de'], 'blog/post.html': ['en', 'de']}
+        doc = ('<html lang="en"><body><a href="/privacy.html">a</a><a href="./privacy.html#x">b</a>'
+               '<a href="../index.html?q=1">c</a><a href="privacy.html">d</a><a href="https://x.example/privacy.html">e</a>'
+               '</body></html>')
+        warnings = []
+        out = i18n.localise_links(doc, 'blog/post.html', 'de', page_langs, 'en', warnings)
+        self.assertIn('href="/privacy-de.html"', out)
+        self.assertIn('href="./privacy.html#x"', out, './ resolves to blog/privacy.html, which is not a page')
+        self.assertIn('href="../index-de.html?q=1"', out)
+        self.assertIn('href="https://x.example/privacy.html"', out, 'external links are never touched')
+        self.assertTrue(any('blog/privacy.html' in w for w in warnings), warnings)
+        out = i18n.localise_links(doc, 'index.html', 'de', page_langs, 'en', [])
+        self.assertIn('href="./privacy-de.html#x"', out)
+
+    def test_unlocalised_internal_links_are_warned_about(self):
+        r = self.build()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('WARN index-de.html: link "privacy.html" has no de version', r.stderr)
+        self.edit_src('index.html', '<a href="privacy.html">Privacy</a>', '<a href="/missing.html">Privacy</a>')
+        r = self.build()
+        self.assertIn('WARN index.html: link "/missing.html" points to missing.html, which is not a page of this build', r.stderr)
+
+    # --- block mode: whole elements with inline markup (German verb order) ------------------------------------
+    def test_block_with_inline_markup_is_translated_as_one_unit(self):
+        doc = '<html lang="en"><body><p class="x">You can <b>sync</b> your notes <a href="#later" title="Later">later</a>.</p></body></html>'
+        strings = {'You can {0}sync{/0} your notes {1}later{/1}.': 'Sie können Ihre Notizen {1}später{/1} {0}synchronisieren{/0}.',
+                   'Later': 'Später'}
+        out, missing = i18n.translate(doc, 'de', strings, set(), {}, 'en')
+        self.assertEqual(missing, [])
+        self.assertIn('<p class="x">Sie können Ihre Notizen <a href="#later" title="Später">später</a> <b>synchronisieren</b>.</p>', out)
+
+    def test_block_mode_falls_back_to_fragments_and_checks_placeholders(self):
+        doc = '<html lang="en"><body><p>Tap <b>here</b> now.</p><p>Go <i>on</i>.</p></body></html>'
+        strings = {'Tap': 'Tippen', 'here': 'hier', 'now.': 'jetzt.', 'Go {0}on{/0}.': 'Weiter.'}
+        out, missing = i18n.translate(doc, 'de', strings, set(), {}, 'en')
+        self.assertIn('<p>Tippen <b>hier</b> jetzt.</p>', out, 'fragment mode still works')
+        self.assertEqual(missing, ['Go {0}on{/0}. (placeholders differ in the translation: {0} {/0})'])
+
+    def test_sample_site_shows_the_german_verb_order_example(self):
+        self.build()
+        self.assertIn('Alles funktioniert ohne Verbindung und wird später <b>synchronisiert</b>.', self.read('index-de.html'))
+
+    # --- config (exit 2) ------------------------------------------------------------------------------------------
+    def test_missing_or_invalid_config_exits_2_with_a_clear_message(self):
+        bad = os.path.join(self.tmp.name, 'bad.json')
+        with open(bad, 'w') as f:
+            f.write('{ not json')
+        r = self.build('--config', bad)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn('config', r.stderr)
+        r = self.build('--config', os.path.join(self.tmp.name, 'nope.json'))
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn('nope.json', r.stderr)
+        with open(os.path.join(CHAIN, 'site.json'), encoding='utf-8') as f:
+            cfg = json.load(f)
+        del cfg['base_url']
+        del cfg['pages']['index.html']['seo']['de']
+        with open(bad, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f)
+        r = self.build('--config', bad)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn('base_url', r.stderr)
+        self.assertIn('pages.index.html.seo.de', r.stderr)
+        self.assertFalse(os.path.exists(self.out))
+
+    # --- SEO: noindex variants, brand, committed lastmod -----------------------------------------------------------
+    def config(self, **changes):
+        with open(os.path.join(CHAIN, 'site.json'), encoding='utf-8') as f:
+            cfg = json.load(f)
+        for k, v in changes.items():
+            cfg[k] = v
+        path = os.path.join(self.tmp.name, 'site.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f)
+        return cfg, path
+
+    def test_noindex_variants_are_left_out_of_hreflang(self):
+        cfg, _ = self.config()
+        cfg['pages']['index.html']['noindex'] = ['de']
+        path = os.path.join(self.tmp.name, 'site.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f)
+        r = self.build('--config', path)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        en, de = self.read('index.html'), self.read('index-de.html')
+        self.assertNotIn('hreflang="de" href=', en.split('</head>')[0])
+        self.assertNotIn('<link rel="alternate"', de.split('</head>')[0], 'a noindex page announces no alternates')
+        self.assertIn('<meta name="robots" content="noindex">', de)
+        sm = self.read('sitemap.xml')
+        self.assertNotIn('index-de.html', sm)
+
+    def test_brand_comes_from_the_config(self):
+        _, path = self.config(brand='Acme Pad')
+        self.assertEqual(self.build('--config', path).returncode, 0)
+        de = self.read('index-de.html')
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', de).group(1))
+        self.assertEqual([n for n in ld['@graph'] if n['@type'] == 'WebSite'][0]['name'], 'Acme Pad')
+        self.assertIn('data-brand="Acme Pad"', de)
+        with open(os.path.join(CHAIN, 'seo.py'), encoding='utf-8') as f:
+            self.assertNotIn('Lumen Notes', f.read())
+        with open(os.path.join(CHAIN, 'assets', 'typo.js'), encoding='utf-8') as f:
+            self.assertNotIn('Lumen Notes', f.read())
+
+    def test_lastmod_history_lives_in_a_committed_file_and_survives_a_clean_checkout(self):
+        self.build(date='2026-10-01')
+        self.assertTrue(os.path.isfile(os.path.join(self.src, 'lastmod.json')), 'lastmod.json next to the pages')
+        shutil.rmtree(os.path.join(self.src, '.build'), ignore_errors=True)   # what a CI checkout looks like
+        shutil.rmtree(self.out)
+        self.build(date='2026-10-20')
+        self.assertEqual(self.read('sitemap.xml').count('<lastmod>2026-10-01</lastmod>'), 2)
+
+    # --- leftover check: a real tokenizer -------------------------------------------------------------------------
+    def test_string_literals_handles_regex_literals_and_templates(self):
+        js = ("const re = /it's/g, half = a / b / c;\n"
+              "const msg = 'Your note is saved';\n"
+              "const t = `${n} notes ${'are saved for you'} here`;\n"
+              "const u = x.replace(/[\"`]/, '') // don't\n")
+        lits = i18n.string_literals(js)
+        self.assertIn('Your note is saved', lits)
+        self.assertIn('are saved for you', lits)
+        self.assertIn(' notes ', lits)
+        self.assertNotIn('s/g, half = a / b / c;\nconst msg = ', lits)
+
+    def test_single_word_dictionary_copy_in_a_script_is_a_leftover(self):
+        self.edit_src('index.html', "  let n = 0;", "  document.title = 'Search';\n  let n = 0;")
+        r = self.build()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn('index-de.html: leftover master-language copy: "Search"', r.stdout)
 
 
 if __name__ == '__main__':

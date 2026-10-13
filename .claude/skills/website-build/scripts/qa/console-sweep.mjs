@@ -19,7 +19,7 @@ main(async () => {
     try { post = new RegExp(process.env.QA_POST || '.'); } catch (e) { throw new UsageError('QA_POST is not a valid regex: ' + e.message); }
   }
   const urls = await listPages(target);
-  const { s } = await open(9461);
+  const { s } = await open();
   const report = { pre: {}, post: {} };
   for (const u of urls) for (const [w, h, m] of W) {
     await s.send('Network.clearBrowserCookies');

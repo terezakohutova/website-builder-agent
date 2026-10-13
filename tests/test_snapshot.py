@@ -167,6 +167,36 @@ class SnapshotTest(unittest.TestCase):
         reasons = [v['reason'] for v in self.versions(p)]
         self.assertEqual(reasons[-1], f'before restore of {good}', 'the broken file must be kept')
 
+    def test_restore_backs_up_a_current_file_over_the_size_limit(self):
+        p = 'site/src/big.html'
+        self.write(p, 'small good')
+        self.run_cli('save', p)
+        good = self.versions(p)[0]['version']
+        self.write(p, 'x' * 4096)   # the current file is now over SNAPSHOT_MAX_MB
+        r = self.run_cli('restore', p, good, env={'SNAPSHOT_MAX_MB': '0.001'})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        vers = self.versions(p)
+        self.assertEqual(vers[-1]['reason'], f'before restore of {good}', 'the large current file must be kept')
+        with open(os.path.join(self.store(p), vers[-1]['version'] + '.html'), encoding='utf-8') as f:
+            self.assertEqual(f.read(), 'x' * 4096)
+
+    def test_restore_refuses_when_the_current_file_cannot_be_backed_up(self):
+        p = 'site/src/index.html'
+        self.write(p, 'good')
+        self.run_cli('save', p)
+        good = self.versions(p)[0]['version']
+        self.write(p, 'current')
+        os.chmod(self.store(p), 0o500)
+        try:
+            if os.access(self.store(p), os.W_OK):
+                self.skipTest('cannot make a read-only folder here (root or Windows ACLs)')
+            r = self.run_cli('restore', p, good)
+        finally:
+            os.chmod(self.store(p), 0o700)
+        self.assertEqual(r.returncode, 3)
+        with open(os.path.join(self.root, *p.split('/')), encoding='utf-8') as f:
+            self.assertEqual(f.read(), 'current', 'nothing may be overwritten without a backup')
+
     def test_generated_and_outside_paths_are_not_versioned(self):
         for rel in ('site/_dist/index.html', 'site/_deploy/index.html', 'node_modules/x/a.js'):
             self.write(rel, 'generated')
@@ -213,6 +243,22 @@ class SnapshotTest(unittest.TestCase):
         for payload in ('', 'not json', '{"tool_input": {"file_path": "/does/not/exist"}}', '[]'):
             r = self.run_cli('hook', stdin=payload)
             self.assertEqual(r.returncode, 0, payload)
+
+    def test_hook_reports_errors_on_stderr_and_in_the_error_log(self):
+        r = self.run_cli('hook', stdin='not json')
+        self.assertEqual(r.returncode, 0)
+        self.assertRegex(r.stderr, r'^snapshot: hook error: .+$')
+        self.assertEqual(len(r.stderr.strip().splitlines()), 1, 'one line only')
+        with open(os.path.join(self.root, '.versions', '_errors.log'), encoding='utf-8') as f:
+            self.assertIn('hook error', f.read())
+
+    def test_hook_warns_when_the_store_is_broken(self):
+        p = self.write('site/a.html', 'x')
+        with open(os.path.join(self.root, '.versions'), 'w') as f:   # a file where the store folder should be
+            f.write('')
+        r = self.run_cli('hook', stdin=json.dumps({'tool_name': 'Edit', 'tool_input': {'file_path': p}}))
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('snapshot: hook error', r.stderr)
 
     def test_hook_example_uses_the_project_dir(self):
         with open(HOOKS, encoding='utf-8') as f:

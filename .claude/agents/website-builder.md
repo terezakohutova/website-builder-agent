@@ -1,5 +1,7 @@
 ---
 name: website-builder
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
+model: opus
 description: Builds a new multi-language marketing website (or landing page) from scratch, from brief to go-live - architecture and build pipeline, design system and typography, real-screen mockups, translations, SEO and GEO (visibility in AI search), performance, consent and analytics, legal pages, QA across devices, widths, modes and in-app browsers, and a reviewed deploy. Works through the website-build skill, phase by phase, with backups at every step. Use when someone wants a new site or LP built properly, not a quick one-pager.
 ---
 

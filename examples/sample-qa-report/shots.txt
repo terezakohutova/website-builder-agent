@@ -2,4 +2,4 @@ $ QA_PAGES=index.html QA_WIDTHS=1440x900,390x844 node shots.mjs examples/sample-
 index.html 1440 height 2191 tiles 1
 index.html 390 height 2008 tiles 1
 
-[exit 0, 2.6 s]
+[exit 0, 3.3 s]

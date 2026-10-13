@@ -12,7 +12,7 @@ main(async () => {
   if (!target || !out || !/^\d+$/.test(max)) throw new UsageError('node shots.mjs <dir|url> <outDir> [maxTiles]');
   const W = widths();
   const pages = await listPages(target);
-  const { s } = await open(9340);
+  const { s } = await open();
   let failed = 0;
   for (const u of pages) for (const [w, h, mobile] of W) {
     const nav = await visit(s, u, { width: w, height: h, mobile });

@@ -7,16 +7,16 @@
 //   QA_BURGER=".menu-toggle" QA_MENU=".site-menu" QA_ANCHOR_MAX=200
 // Exit: 0 clean, 1 findings (a miss, a covered target, a page that fails to load), 2 bad usage, 3 could not run.
 // Distilled from a production site QA harness.
-import { main, open, visit, ev, listPages, short, scrollAndSettle, scrollSettle, wait, UsageError } from './cdp.mjs';
+import { main, open, visit, ev, listPages, short, scrollAndSettle, scrollSettle, wait, UsageError, isMobile, defaultHeight } from './cdp.mjs';
 
 main(async () => {
   const [target, W = '390'] = process.argv.slice(2);
   if (!target || !/^\d+$/.test(W)) throw new UsageError('node anchors.mjs <dir|url> [width]');
-  const w = +W, h = w < 600 ? 844 : 900, mobile = w < 600;
+  const w = +W, h = defaultHeight(w), mobile = isMobile(w);
   const BURGER = process.env.QA_BURGER || '', MENU = process.env.QA_MENU || '';
   const MAXTOP = +(process.env.QA_ANCHOR_MAX || 200);
   const pages = await listPages(target);
-  const { s } = await open(9460);
+  const { s } = await open();
   let fails = 0;
   for (const u of pages) {
     const nav = await visit(s, u, { width: w, height: h, mobile });

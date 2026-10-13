@@ -4,4 +4,7 @@ built index.html (en)
 built privacy.html (en)
 wrote sitemap.xml; 3 pages -> <repo>\examples\sample-site\_dist
 
-[exit 0, 0.3 s]
+[stderr]
+WARN index-de.html: link "privacy.html" has no de version, it stays on the en page
+
+[exit 0, 0.8 s]

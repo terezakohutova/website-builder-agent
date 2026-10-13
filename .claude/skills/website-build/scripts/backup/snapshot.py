@@ -9,7 +9,8 @@ with `-N` appended when several saves land in the same second.
 
     python snapshot.py save <file> [<file> ...]      # take a version now (do this before a scripted edit)
     python snapshot.py list <file>                   # versions of one file, oldest first
-    python snapshot.py restore <file> <version>      # versions the current file first, then restores
+    python snapshot.py restore <file> <version>      # versions the current file first (any size), then restores;
+                                                     # if that backup fails, nothing is restored (exit 3)
     python snapshot.py hook                          # PreToolUse hook: reads the tool call JSON on stdin
 
 Environment:
@@ -23,7 +24,8 @@ its file exclusively, and each version has its own metadata file, so there is no
 
 Exit codes: 0 ok, 1 nothing was saved because a file was skipped (too large, missing), 2 bad usage
 (including a malformed version id), 3 could not run (unknown version, I/O error).
-The hook always exits 0: a backup must never block an edit.
+The hook always exits 0: a backup must never block an edit. Any hook error is printed as one line on
+stderr and appended to `.versions/_errors.log`.
 """
 import datetime as dt
 import hashlib
@@ -133,16 +135,16 @@ def prune(d, ext):
     return [m['version'] for m in old]
 
 
-def save(path, reason='manual'):
+def save(path, reason='manual', size_limit=True):
     """Copy `path` into the store. Returns the new version path, or None when unchanged.
-    Raises Skipped when the file is missing or too large."""
+    Raises Skipped when the file is missing or too large (size_limit=False: never too large)."""
     r = rel(path)
     if r is None:
         raise Skipped(f'not versioned (outside {ROOT} or in a generated folder)')
     if not os.path.isfile(path):
         raise Skipped('skipped: no such file')
     size = os.path.getsize(path)
-    if size > MAX_MB * 1024 * 1024:
+    if size_limit and size > MAX_MB * 1024 * 1024:
         raise Skipped(f'skipped: larger than {MAX_MB:g} MB ({size / 1048576:.1f} MB); raise SNAPSHOT_MAX_MB to version it')
     d = store_dir(r)
     os.makedirs(d, exist_ok=True)
@@ -162,6 +164,18 @@ def save(path, reason='manual'):
     os.replace(tmp, os.path.join(d, ver + '.meta.json'))
     prune(d, ext)
     return dst
+
+
+def hook_error(e):
+    """One line on stderr (shown to the user) and one line appended to .versions/_errors.log."""
+    line = ' '.join(f'snapshot: hook error: {type(e).__name__}: {e}'.split())
+    print(line, file=sys.stderr)
+    try:
+        os.makedirs(STORE, exist_ok=True)
+        with open(os.path.join(STORE, '_errors.log'), 'a', encoding='utf-8') as f:
+            f.write(dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds') + ' ' + line + '\n')
+    except OSError:
+        pass   # the store itself is broken; the stderr line is all we can do
 
 
 def usage(msg):
@@ -212,10 +226,13 @@ def main(argv):
         if not src or not os.path.isfile(src):
             print(f'no version {ver} for {path} (see: snapshot.py list {path})', file=sys.stderr)
             return 3
-        try:
-            save(path, reason=f'before restore of {ver}')
-        except Skipped:
-            pass  # nothing to keep (missing file) - restore anyway
+        # the current file is always versioned first, whatever its size; if that fails, nothing is overwritten
+        if os.path.exists(path):
+            try:
+                save(path, reason=f'before restore of {ver}', size_limit=False)
+            except (Skipped, OSError) as e:
+                print(f'{path}: could not version the current file ({e}); nothing restored', file=sys.stderr)
+                return 3
         shutil.copy2(src, path)
         print(f'restored {path} from {ver}')
         return 0
@@ -230,14 +247,19 @@ def main(argv):
                 except Skipped as e:
                     if 'larger than' in str(e):
                         print(f'snapshot: {p}: {e}', file=sys.stderr)
-        except Exception:
-            pass  # a backup hook must never block the edit
+        except Exception as e:   # a backup hook must never block the edit, but it must not fail silently
+            hook_error(e)
         return 0
     print(__doc__)
     return 2
 
 
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):   # localised OS messages on a cp1252 console
+        try:
+            stream.reconfigure(encoding='utf-8', errors='replace')
+        except (AttributeError, ValueError):
+            pass
     try:
         sys.exit(main(sys.argv[1:]))
     except OSError as e:

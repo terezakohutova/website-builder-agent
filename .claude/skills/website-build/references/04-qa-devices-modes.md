@@ -44,9 +44,9 @@ The generic harness is in `../scripts/qa/` (usage in its README). Paths below: `
 ### Why raw CDP
 - In the real build both the browser-extension automation and the Playwright MCP failed to connect. Node 22+
   has a global `WebSocket`, which is all a CDP client needs: zero npm installs, nothing to break.
-- `cdp.mjs` (~430 lines): `launch(port)` spawns `chrome --headless=new --remote-debugging-port
-  --user-data-dir=<tmp> --disable-gpu --hide-scrollbars --force-device-scale-factor=1
-  --allow-file-access-from-files` and polls `/json/version`; `connect()` creates a target, attaches with
+- `cdp.mjs` (~470 lines): `launch(port)` spawns `chrome --headless=new --remote-debugging-port=0` (a free
+  port Chrome picks; `QA_PORT` pins one) `--user-data-dir=<tmp>` --disable-gpu --hide-scrollbars --force-device-scale-factor=1
+  --allow-file-access-from-files` and reads the port from `<tmp>/DevToolsActivePort`, then checks that `/json/version` on it names the same browser socket; a pinned `QA_PORT` must be free before launch (Chrome writes no `DevToolsActivePort` for a fixed port). Never attach to a stray Chrome; `connect()` creates a target, attaches with
   `flatten:true`, enables Page/Runtime/Log/Network; `goto()` sets `Emulation.setDeviceMetricsOverride`, clears
   the event buffer, navigates, waits for `Page.loadEventFired`, fonts and network idle (capped), and fails the
   page on a navigation error, an HTTP >= 400 main document or a load timeout; `ev()` = `Runtime.evaluate

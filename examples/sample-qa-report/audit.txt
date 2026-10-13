@@ -26,4 +26,4 @@ ok   privacy.html @320
 
 3 pages x 8 widths, 0 with issues
 
-[exit 0, 14.7 s]
+[exit 0, 16.0 s]

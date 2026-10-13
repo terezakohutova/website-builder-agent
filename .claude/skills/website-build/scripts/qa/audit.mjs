@@ -1,10 +1,11 @@
-// Per page x per width: horizontal overflow (leaf elements past the viewport + document wider than
+// Per page x per width: horizontal overflow (elements past either viewport edge + document wider than
 // the window), broken images, JS exceptions / console errors, and pages that fail to load.
 //   node audit.mjs <dir | https://base> [out.json]
 //   QA_WIDTHS=1440x900,1024x768,768x1024,390x844,360x780,320x700 node audit.mjs ./site
 // Exit: 0 clean, 1 findings, 2 bad usage, 3 could not run.
-// Overflow: an element past the right edge only counts when no ancestor below <body> clips it
-// (overflow hidden/clip/auto/scroll on a box that itself fits): a carousel track with off-screen slides is
+// Overflow: any element (not only leaves) past the right edge, or partly past the left edge, is reported at
+// the outermost element that sticks out. It only counts when no ancestor below <body> clips it
+// (overflow hidden/clip/auto/scroll on a box that itself fits within both edges): a carousel track with off-screen slides is
 // not a bug, a paragraph sticking out of the page is. The root is never treated as a clip: content cut off by
 // `html{overflow-x:clip}` is still content the user cannot see.
 // Lazy images are only flagged once they have actually failed (the original harness flagged unloaded
@@ -24,18 +25,29 @@ const PROBE = vw => `(() => {
   const clippedBy = el => {
     for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
       const c = getComputedStyle(a);
-      if (c.overflowX !== 'visible' && a.getBoundingClientRect().right <= vw + 2) return a;
+      const ab = a.getBoundingClientRect();
+      if (c.overflowX !== 'visible' && ab.right <= vw + 2 && ab.left >= -2) return a;
       if (c.position === 'fixed') return null;
     }
     return null;
   };
+  // past the right edge, or partly past the left edge (an element wholly left of the screen is the usual
+  // visually-hidden pattern, e.g. a skip link at left:-9999px, and cannot be scrolled to anyway)
+  const sticksOut = b => b.width > 4 && (b.right > vw + 2 || (b.left < -2 && b.right > 0));
+  const out = new Set();
   document.querySelectorAll('body *').forEach(el => {
     const b = el.getBoundingClientRect();
     if (b.width === 0 && b.height === 0) return;
     const cs = getComputedStyle(el);
     if (cs.position === 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') return;
-    if (b.right > vw + 2 && el.children.length === 0 && b.width > 4) {
-      if (clippedBy(el)) r.clipped++; else r.overflow.push(sig(el) + ' right=' + Math.round(b.right));
+    // every element, not only leaves (a paragraph with a link sticks out too); reported once, at the
+    // outermost element that sticks out, so a wide wrapper is one finding and not one per descendant
+    if (sticksOut(b)) {
+      out.add(el);
+      if (!out.has(el.parentElement)) {
+        const edge = b.right > vw + 2 ? ' right=' + Math.round(b.right) : ' left=' + Math.round(b.left);
+        if (clippedBy(el)) r.clipped++; else r.overflow.push(sig(el) + edge);
+      }
     }
     // a lazy image that has not loaded yet is complete=false; flag it only once it has failed
     if (el.tagName === 'IMG' && (el.loading === 'lazy' ? (el.complete && el.naturalWidth === 0) : (!el.complete || el.naturalWidth === 0)))
@@ -50,7 +62,7 @@ main(async () => {
   const W = widths();
   const keep = ignoreFilter();
   const pages = await listPages(target);
-  const { s } = await open(9333);
+  const { s } = await open();
   const report = {}; let bad = 0;
   for (const u of pages) {
     report[u] = {};

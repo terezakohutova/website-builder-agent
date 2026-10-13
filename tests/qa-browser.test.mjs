@@ -27,10 +27,11 @@ test('CI has a Chrome to test with', { skip: CI ? false : 'not CI' }, () => {
   assert.ok(hasChrome, `no Chrome at ${CHROME}: install one or set CHROME_PATH`);
 });
 
-let port = 9700;
+// No QA_PORT: every run lets Chrome pick a free port, as a user's run does.
+const baseEnv = { ...process.env }; delete baseEnv.QA_PORT;
 // async, so the in-process fixture server can answer while a script runs
 const run = (script, args, env = {}) => {
-  const p = spawn(process.execPath, [join(QA, script), ...args], { cwd: ROOT, env: { ...process.env, QA_PORT: String(port++), ...env } });
+  const p = spawn(process.execPath, [join(QA, script), ...args], { cwd: ROOT, env: { ...baseEnv, ...env } });
   let stdout = '', stderr = '';
   p.stdout.on('data', d => { stdout += d; }); p.stderr.on('data', d => { stderr += d; });
   const done = new Promise(res => p.on('close', (status, signal) => res({ status, signal, stdout, stderr, out: stdout + stderr })));
@@ -63,6 +64,39 @@ async function serve(routes, fn) {
   try { return await fn(`http://127.0.0.1:${srv.address().port}`); }
   finally { for (const r of hanging) r.destroy(); srv.closeAllConnections?.(); await new Promise(r => srv.close(r)); }
 }
+
+const freePort = () => new Promise(r => { const t = createServer(); t.listen(0, '127.0.0.1', () => { const p = t.address().port; t.close(() => r(p)); }); });
+// A stray "browser" on a port: answers /json/version like Chrome does, with a socket URL that leads nowhere.
+async function stray(port, fn) {
+  const srv = createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ Browser: 'Stray/1.0', webSocketDebuggerUrl: `ws://127.0.0.1:${srv.address().port}/devtools/browser/stray` }));
+  });
+  const ok = await new Promise(r => { srv.once('error', () => r(false)); srv.listen(port, '127.0.0.1', () => r(true)); });
+  if (!ok) return 'port busy';
+  try { return await fn(srv.address().port); } finally { srv.closeAllConnections?.(); await new Promise(r => srv.close(r)); }
+}
+
+// ---- ports: never attach to a browser we did not launch ----------------------------------------------------
+test('ports: a stray browser on the old default port 9333 is not attached to', opts, async () => {
+  const r = await stray(9333, () => run('audit.mjs', [SAMPLE], { QA_WIDTHS: '1440x900', QA_PAGES: 'index.html' }));
+  if (r === 'port busy') return;   // something real holds 9333 here; nothing to prove
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.stdout, /1 pages x 1 widths, 0 with issues/);
+});
+
+test('ports: an explicit free QA_PORT works (Chrome writes no DevToolsActivePort for a fixed port)', opts, async () => {
+  const r = await run('audit.mjs', [SAMPLE], { QA_WIDTHS: '1440x900', QA_PAGES: 'index.html', QA_PORT: String(await freePort()) });
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.stdout, /1 pages x 1 widths, 0 with issues/);
+});
+
+test('ports: an explicit QA_PORT held by a stray browser fails with exit 3 and says so', opts, async () => {
+  const port = await freePort();
+  const r = await stray(port, p => run('audit.mjs', [SAMPLE], { QA_WIDTHS: '1440x900', QA_PAGES: 'index.html', QA_PORT: String(p) }));
+  assert.equal(r.status, 3, r.out);
+  assert.match(r.stderr, /not the Chrome this run launched/);
+});
 
 // ---- audit ---------------------------------------------------------------------------------------
 test('audit: the sample site source is clean at desktop and the smallest phone width', opts, async () => {
@@ -98,7 +132,23 @@ test('audit: a carousel track clipped by overflow:hidden is not overflow', opts,
 </div></div>`, async dir => {
   const r = await run('audit.mjs', [dir], { QA_WIDTHS: '390x844' });
   assert.equal(r.status, 0, r.out);
-  assert.match(r.stdout, /ok {3}page\.html @390 \(2 clipped by an overflow container, not counted\)/);
+  assert.match(r.stdout, /ok {3}page\.html @390 \(1 clipped by an overflow container, not counted\)/);
+}));
+
+test('audit: a paragraph with a link that sticks out counts, not only leaf elements', opts, () => withDir('<p style="width:900px">too wide with <a href="#">a link</a> inside</p>', async dir => {
+  const r = await run('audit.mjs', [dir], { QA_WIDTHS: '390x844' });
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.stdout, /FAIL page\.html @390 overflow=1/);
+}));
+
+test('audit: overflow past the LEFT edge fails; inside a clipping box it does not', opts, () => withDir({
+  'left.html': PAGE('<p style="margin-left:-150px">this paragraph starts left of the screen</p>'),
+  'clipped.html': PAGE('<div style="overflow:hidden"><p style="margin-left:-150px">cut off on purpose</p></div>'),
+}, async dir => {
+  const r = await run('audit.mjs', [dir], { QA_WIDTHS: '390x844' });
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.stdout, /FAIL left\.html @390 overflow=1/);
+  assert.match(r.stdout, /ok {3}clipped\.html @390 \(1 clipped/);
 }));
 
 test('audit: a broken image and a JS exception fail', opts, () => withDir('<img src="missing.png" width="10" height="10" alt=""><script>undefinedFunction()</script>', async dir => {
@@ -294,8 +344,8 @@ test('SIGTERM stops the run with exit 143 and takes Chrome down with it', { ...o
   '/slow.html': PAGE('<img src="/never.png" alt="">'),
   '/never.png': { hang: true },
 }, async base => {
-  const p = port;
-  const pending = run('audit.mjs', [base], { QA_WIDTHS: '1440x900', QA_LOAD_TIMEOUT: '60000' });
+  const p = await freePort();
+  const pending = run('audit.mjs', [base], { QA_WIDTHS: '1440x900', QA_LOAD_TIMEOUT: '60000', QA_PORT: String(p) });
   for (let i = 0; i < 100; i++) {   // wait until this run's Chrome answers on its port
     try { await (await fetch(`http://127.0.0.1:${p}/json/version`)).json(); break; } catch { await new Promise(r => setTimeout(r, 100)); }
   }

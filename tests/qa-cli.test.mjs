@@ -311,3 +311,33 @@ test('inapp findings(): clean row passes, every failure kind is reported', () =>
   for (const k of ['fatal', 'HTTP 404', 'overflow', 'wider than viewport', 'broken images', 'JS errors', 'console errors', 'HTTP >= 400', 'menu', 'cookie bar'])
     assert.ok(f.some(x => x.includes(k)), k);
 });
+
+// ---- jscheck line numbers: linear, not quadratic ------------------------------------------------------------
+test('jscheck scan(): correct line numbers, and 20 000 handlers scan in well under a few seconds', async () => {
+  const js = await import(pathToFileURL(join(QA, 'jscheck.mjs')).href + '?scan');
+  const small = [...js.scan('<p>\n<button onclick="a()">x</button>\n\n<script>\nlet a;</script>')];
+  assert.deepEqual(small.map(x => [x.kind, x.line]), [['handler', 2], ['script', 4]]);
+  const big = Array.from({ length: 20000 }, (_, i) => `<b onclick="f(${i})">${'x'.repeat(40)}</b>`).join('\n');
+  const t0 = Date.now();
+  const items = [...js.scan(big)];
+  assert.equal(items.length, 20000);
+  assert.equal(items.at(-1).line, 20000);
+  assert.ok(Date.now() - t0 < 3000, `scan took ${Date.now() - t0} ms`);
+});
+
+// ---- mobile emulation threshold -------------------------------------------------------------------------------
+test('widths(): tablets up to QA_MOBILE_MAX (default 820) get touch emulation; a bad value is usage', () => {
+  const keep = { w: process.env.QA_WIDTHS, m: process.env.QA_MOBILE_MAX };
+  try {
+    delete process.env.QA_MOBILE_MAX;
+    process.env.QA_WIDTHS = '1440x900,820x1180,768x1024,1024x768';
+    assert.deepEqual(cdp.widths().map(w => w[2]), [false, true, true, false]);
+    assert.equal(cdp.isMobile(768), true);
+    process.env.QA_MOBILE_MAX = '600';
+    assert.deepEqual(cdp.widths().map(w => w[2]), [false, false, false, false]);
+    process.env.QA_MOBILE_MAX = 'tablet';
+    assert.throws(() => cdp.widths(), e => e instanceof cdp.UsageError);
+  } finally {
+    for (const [k, v] of [['QA_WIDTHS', keep.w], ['QA_MOBILE_MAX', keep.m]]) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  }
+});

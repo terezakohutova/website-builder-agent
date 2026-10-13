@@ -8,4 +8,4 @@ ok   index.html page #faq -> top 287
 
 0 failing anchors
 
-[exit 0, 6.5 s]
+[exit 0, 7.2 s]

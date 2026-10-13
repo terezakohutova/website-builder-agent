@@ -20,7 +20,7 @@ main(async () => {
     throw new CouldNotRun(`axe-core not found: set AXE_PATH=<dir>/node_modules/axe-core/axe.min.js (got ${AXE_PATH || 'nothing'})`);
   const AXE = readFileSync(AXE_PATH, 'utf8');
   const pages = await listPages(target);
-  const { s } = await open(9614);
+  const { s } = await open();
   const R = {}; let total = 0;
   for (const u of pages) for (const [w, h, m] of W) {
     const nav = await visit(s, u, { width: w, height: h, mobile: m });

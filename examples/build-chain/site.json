@@ -1,5 +1,6 @@
 {
   "base_url": "https://lumen-notes.example",
+  "brand": "Lumen Notes",
   "master": "en",
   "x_default": "en",
   "languages": { "en": "EN", "de": "DE" },

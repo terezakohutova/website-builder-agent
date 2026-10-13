@@ -1,6 +1,5 @@
 .versions/
 node_modules/
 __pycache__/
-.impeccable/
 _dist/
 .build/

@@ -60,7 +60,14 @@ export function parseAttrs(s, i) {
 
 // Yields { kind: 'script', attrs, code, line } and { kind: 'handler', tag, name, code, line } for one HTML string.
 export function* scan(html) {
-  const lineAt = idx => html.slice(0, idx).split('\n').length;
+  // line starts computed once, then a binary search per lookup (slicing from 0 each time was O(n^2))
+  const starts = [0];
+  for (let i = html.indexOf('\n'); i >= 0; i = html.indexOf('\n', i + 1)) starts.push(i + 1);
+  const lineAt = idx => {
+    let lo = 0, hi = starts.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= idx) lo = mid; else hi = mid - 1; }
+    return lo + 1;
+  };
   const re = /<!--|<([a-zA-Z][a-zA-Z0-9:-]*)/g;
   let m;
   while ((m = re.exec(html))) {

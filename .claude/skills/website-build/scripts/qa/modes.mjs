@@ -7,16 +7,16 @@
 // Shoots y = 0, 1 and 2 viewports down. QA_HIDE=selectors hides overlays (cookie bar) first.
 // Exit: 0 done, 1 a page failed to load (the screenshots are for you to look at, not judged here),
 // 2 bad usage, 3 could not run.
-import { main, open, visit, ev, shot, emulateMedia, listPages, short, slug, scrollAndSettle, J, UsageError } from './cdp.mjs';
+import { main, open, visit, ev, shot, emulateMedia, listPages, short, slug, scrollAndSettle, J, UsageError, isMobile, defaultHeight } from './cdp.mjs';
 
 main(async () => {
   const [target, out, mode = 'forcedark', W = '390'] = process.argv.slice(2);
   if (!target || !out || !['forcedark', 'dark', 'reduced'].includes(mode) || !/^\d+$/.test(W)) throw new UsageError('node modes.mjs <dir|url> <outDir> [forcedark|dark|reduced] [width]');
-  const w = +W, h = w < 600 ? 844 : 900, mobile = w < 600;
+  const w = +W, h = defaultHeight(w), mobile = isMobile(w);
   const args = mode === 'forcedark' ? ['--force-dark-mode', '--enable-features=WebContentsForceDark', '--blink-settings=forceDarkModeEnabled=true'] : [];
   const feats = mode === 'reduced' ? [{ name: 'prefers-reduced-motion', value: 'reduce' }] : [{ name: 'prefers-color-scheme', value: 'dark' }];
   const pages = await listPages(target);
-  const { s } = await open(9391, { args });
+  const { s } = await open({ args });
   let failed = 0;
   for (const u of pages) {
     await emulateMedia(s, feats);

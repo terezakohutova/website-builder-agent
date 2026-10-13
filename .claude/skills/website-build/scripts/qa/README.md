@@ -38,14 +38,15 @@ within `QA_LOAD_TIMEOUT`. Scroll steps wait until `scrollY` stops changing inste
 Common env:
 | var | default | meaning |
 |---|---|---|
-| `QA_WIDTHS` | `1440x900,390x844` | comma list `WxH`; width < 600 = mobile emulation + touch |
+| `QA_WIDTHS` | `1440x900,390x844` | comma list `WxH`; widths up to `QA_MOBILE_MAX` get mobile emulation + touch |
+| `QA_MOBILE_MAX` | `820` | widest viewport that is emulated as a touch device (768 and 820 px tablets included) |
 | `QA_PAGES` | all | comma list of substrings; keep only matching URLs |
 | `QA_IGNORE` | - | regex; matching console/network messages are not findings (`/favicon.ico` is always ignored) |
 | `QA_LOAD_TIMEOUT` | `30000` | ms until a page without a load event fails |
 | `QA_IDLE_CAP` | `3000` | ms cap on the network-idle wait after load |
 | `QA_CMD_TIMEOUT` | `30000` | ms until a single CDP command fails (exit 3) |
 | `QA_SITEMAP_ABSOLUTE` | - | `1` = do not rebase sitemap URLs |
-| `QA_PORT` | per script | debugging port; give parallel runs different ports |
+| `QA_PORT` | free port | pin the debugging port. By default Chrome picks a free port, so parallel runs are safe; the run never attaches to a stray browser: on the free port it checks its own profile's `DevToolsActivePort`, and a pinned port must be free before launch, otherwise exit 3 |
 | `CHROME_PATH` | auto | Chrome binary |
 | `CHROME_ARGS` | - | extra Chrome flags, space-separated (e.g. `--no-sandbox` on Linux CI runners that need it) |
 
@@ -67,7 +68,7 @@ Suggested full width set: `1440x900,1280x800,1024x768,768x1024,430x932,390x844,3
 | script | what | exit 1 when |
 |---|---|---|
 | `cdp.mjs` | the library: `launch`/`connect`/`open`, `goto`/`visit`, `ev`/`J`, `shot`, `scrollToY`/`scrollAndSettle`/`scrollSettle`, `networkIdle`, `wheel`, `clickAt`, `key`, `emulateMedia`, `consoleErrors`, `collectIssues`, `ignoreFilter`, `listPages`, `widths`, `main` (exit-code contract). Commands time out, a closed socket fails every pending call, only the events the checks read are kept (trimmed, capped at 5000), Chrome is killed on exit, Ctrl+C and SIGTERM | - |
-| `audit.mjs <target> [out.json]` | per page x width: leaf elements past the viewport (unless a non-root ancestor with `overflow` other than `visible` clips them, e.g. a carousel track), document wider than the device, broken images, JS exceptions / console errors. `QA_SCROLL=1` scrolls through first | any finding |
+| `audit.mjs <target> [out.json]` | per page x width: elements past the right edge or partly past the left edge, reported once at the outermost element that sticks out (unless a non-root ancestor with `overflow` other than `visible` that itself fits within both edges clips them, e.g. a carousel track), document wider than the device, broken images, JS exceptions / console errors. `QA_SCROLL=1` scrolls through first | any finding |
 | `content.mjs <target> text <outDir>` | visible-copy dump per page (`TAG :: text`) - read it, it finds what screenshots hide | a page fails to load |
 | `content.mjs <target> struct` | headings whose box has no body copy | any row |
 | `content.mjs <target> heads - [width]` | headings wrapping into more lines than needed (`-` fills the unused outDir slot; `window.__QA_HEAD_SKIP` = selectors to skip) | any row |

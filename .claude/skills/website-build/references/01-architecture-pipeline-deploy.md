@@ -368,8 +368,11 @@ Several Claude Code sessions in the same folder overwrite each other silently.
   - A second build prints `ANOTHER BUILD IS RUNNING (pid N since T) - wait for it` and exits.
   - **Owner check on cleanup:** the trap removes the lock only if `info` still holds *this* pid. A dead or
     timed-out build must never delete a live build's lock.
-  - **Stale takeover** only if the lock is older than a threshold (e.g. 45 min) **and** the recorded pid is
-    no longer running; take it over by rewriting `info`, not by deleting and racing.
+  - **Stale takeover:** on the same host, as soon as the recorded pid is no longer running (a crashed build
+    must not block the next one for 45 minutes); for an owner on another host, whose pid cannot be checked,
+    only after a threshold (e.g. 45 min). Serialise the takeover with an exclusively created
+    `<lock>.takeover` file (`O_EXCL`), re-read `info` under it and rewrite it; never delete and race, and never
+    rely on "write, sleep, read back" (two builds can both win that).
   - `build-deploy.py` refuses while a fresh lock exists.
   - If you see the message: wait. Never delete the lock by hand.
 - **Tells that another session is active:** new loose `_tmp-*.py` files; a file you just wrote comes back

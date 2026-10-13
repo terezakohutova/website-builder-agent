@@ -10,4 +10,4 @@ $ QA_PAGES=index-de.html node wheel.mjs examples/sample-site/_dist 1440
 
 1 pages, 0 findings
 
-[exit 0, 5.8 s]
+[exit 0, 6.5 s]
