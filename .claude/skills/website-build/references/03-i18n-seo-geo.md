@@ -2,19 +2,19 @@
 
 Scope: how to build the language versions, search visibility, AI-answer visibility (GEO), speed and tagging of a
 **new static multi-language marketing site** with Claude Code. Everything here comes from a real production build
-(one master language + four generated languages, ~60 pages each) and is written as **rule + why**. Where a lesson
+(one master language + four generated languages, ~12 pages per language, ~60 in total) and is written as **rule + why**. Where a lesson
 came from an incident, the incident is described generically.
 
-Assumed layout (adapt names, keep the separation):
+Layout (the same as `01-architecture-pipeline-deploy.md` section 2; adapt names, keep the separation):
 
 ```
 site/src/            master-language pages (the only HTML you edit by hand)
 site/i18n/           dictionaries: strings-<lang>.json, per-page-set dictionaries
 site/data/           market tables (entity, money, socials, ratings, store links), seo_data.py
-build/passes/        ordered build scripts (injectors, i18n builders, seo, optimize, deploy)
-build/qa/            read-only checkers (verify, lang-check, probes, perf)
-dist/                optimized output (generated)
-deploy/              final publishable tree with clean URLs (generated)
+site/_dist/          optimized output (generated)
+site/_deploy/        final publishable tree with clean URLs (generated)
+build/               ordered build scripts: passes/, injectors/, i18n/, seo/, optimize/, build-deploy.py
+qa/                  read-only checkers (verify, lang-check, probes, perf)
 ```
 
 ---
@@ -27,8 +27,8 @@ A typical chain, run by one `build-all.sh` that holds a lock file (two parallel 
 2. Runtime injectors add shared scripts/styles (typography, link rewriting, mobile tweaks).
 3. Language builders generate `<page>-<lang>.html` from master pages + dictionaries; market-specific special pages (e.g. a German legal notice) are built here too.
 4. SEO post-processor = **last writer of the source pages**. Any i18n builder run after it puts the master-language head back into the variants.
-5. Optimizer writes `dist/` (sources never touched again).
-6. `dist`-only passes (consent, events, countdowns, late fixes, CMS payload for FAQ/legal).
+5. Optimizer writes `_dist/` (sources never touched again).
+6. `_dist`-only passes (consent, events, countdowns, late fixes, CMS payload for FAQ/legal).
 7. **Re-derive machine files from the finished pages**: llms.txt / llms-full, FAQ JSON, facts, sitemap lastmod.
 8. Deploy step: clean URLs, canonical/hreflang/sitemap/llms rewritten to clean paths, 301s, aliases, 404, headers/CSP, search-engine verification meta, strip stray body metas and comments.
 
@@ -40,7 +40,7 @@ A typical chain, run by one `build-all.sh` that holds a lock file (two parallel 
 ## 1. Internationalisation (i18n)
 
 ### 1.1 Architecture: one master source, generated languages by exact text match
-- **Rule:** edit only the master-language page or a builder/dictionary, then re-run the chain. Never hand-edit generated language files, `dist/` or `deploy/`. Why: every run overwrites them; hand edits vanish silently.
+- **Rule:** edit only the master-language page or a builder/dictionary, then re-run the chain. Never hand-edit generated language files, `_dist/` or `_deploy/`. Why: every run overwrites them; hand edits vanish silently.
 - **How a builder translates:**
   1. Mask `<script>`, `<style>`, comments.
   2. Translate JS string literals via a small JS lexer (not regex on raw JS).
@@ -50,7 +50,7 @@ A typical chain, run by one `build-all.sh` that holds a lock file (two parallel 
   6. **Fail** if any master key is untranslated. Print "master-language-looking leftovers" (regex on characters typical of the master language, e.g. diacritics).
 - **Dictionaries merge in a defined order** (later wins): homepage -> page set A -> page set B -> per-page restore files. Merge scripts must be idempotent.
 - **Extraction workflow:** an `extract.py` writes `strings-<page>-<master>.json` (kind text|attr|js) + a `todo` list; one translation subagent per language fills the values. Translate key -> value JSON, never whole HTML pages - markup, scripts and IDs stay untouched.
-- **Trap: hand-inserted `&nbsp;` / `<br>` breaks translation.** The key is the exact text node; `foo&nbsp;bar` or a `<br>` changes the node, the dictionary misses it, the variant keeps master-language text. Fix: do typography **at runtime** (a `typo.js` + `typo.css`): sentence-per-line for headings and short leads, NBSP after one-letter words / short prepositions per language, NBSP inside "200 CUR", "600 000", the brand name. Never bake locale typography into text that is also a translation key.
+- **Trap: hand-inserted `&nbsp;` / `<br>` breaks translation.** The key is the exact text node; `foo&nbsp;bar` or a `<br>` changes the node, the dictionary misses it, the variant keeps master-language text. Fix: do typography **at runtime** (a `typo.js` + `typo.css`): sentence-per-line for headings and short leads, NBSP after one-letter words / short prepositions per language, NBSP inside "50 CUR", "40 000", the brand name. Never bake locale typography into text that is also a translation key.
 - **typo.js:** keep all regexes as literals. A regex built from a string lost a backslash (`\s` became `s`) in the first version. After changing typo.js/css, re-run the injector **and** every i18n builder (variants only get it through their builders).
 - **Page CSS must not go into an injector-owned block.** An injector that replaces its own `<style data-typo>` block wiped page CSS someone had appended there. Page CSS goes into its own `<style data-page-pass>`.
 - **List the anchors builders depend on** (data attributes, footer entity strings, figure-format anchors, icon hashes) in the builder header with asserts. Changing one silently breaks a language or fails the build.
@@ -75,7 +75,7 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 | Table | Holds | Lesson |
 |---|---|---|
 | `ENTITY` | footer legal entity per market: name, company IDs, VAT IDs, address in the registry's own format, share capital where law requires it, support mailbox | Copy from the official register, note the source; decide once whether register courts appear |
-| `MONEY` | currency, amounts per market (referral bonus etc.), formatting locale (`de-DE`, `en-IE`) | If EN serves a non-euro market, show both: "€5 (CUR 125)" |
+| `MONEY` | currency, amounts per market (referral bonus etc.), formatting locale (`de-DE`, `en-IE`) | If EN serves a non-euro market, show both: "€8 (CUR 200)" |
 | `FIGFMT` | thousands/decimal separators per language for animated figures | see trap below |
 | `SOCIAL` | per-market social accounts; fallback to the main ones | |
 | `STORE` | per-market App Store / Play URLs | App Store URL must carry a country segment (`/xx/app/...`); the country-less URL 404'd on desktop |
@@ -83,7 +83,7 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 | `REVIEWS` | real store reviews, verbatim, no names, with a source list | Invented testimonials are banned by EU consumer law (UCPD blacklist) |
 | `PARTNERS` / `PRESS` | per-market logos, clips, press contact | Show none rather than an unverified list |
 
-- **Currency sign rule:** pick one per language (e.g. `5 €` with NBSP everywhere except EN `€5`), enforce it with a pass that also covers the SEO data table, and check `dist/` with a regex. The real build changed this rule three times; write it down and stop.
+- **Currency sign rule:** pick one per language (e.g. `8 €` with NBSP everywhere except EN `€8`), enforce it with a pass that also covers the SEO data table, and check `_dist/` with a regex. The real build changed this rule three times; write it down and stop.
 - **Animated number trap:** count-up scripts rewrite the figure while counting, so dictionaries aren't enough - patch number formatting per language. And figures animate **to `data-to`**: changing the visible text without changing `data-to` brings the old value back after the animation. Static HTML should hold the final value (crawlers read that).
 - Big-number abbreviations per language (`M+`, `Mio.+`, `mln+`) live in the table, not in copy.
 - **Localised screenshots/mockups:** translate app screens in the design tool (one page of copies per language), export PNG at 3x -> WebP. Why PNG, not SVG: design-tool SVG export lost background blur and turned emoji into boxes. Hide market-specific elements that don't exist in other markets (local bank logos, the wrong regulator's logo). Use `@example.com` in login mockups, never a real mail provider.
@@ -106,7 +106,7 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 - Store requirements override "hide": e.g. Google Play requires a public account-deletion page.
 
 ### 1.6 Translation QA
-- **LanguageTool, run locally** (Docker/jar; no text leaves the machine) on visible text blocks of `deploy/` per locale (`sk-SK`, `pl-PL`, `de-DE`, `en-GB`), brand words ignored -> report. LanguageTool has **no Czech**.
+- **LanguageTool, run locally** (Docker/jar; no text leaves the machine) on visible text blocks of `_deploy/` per locale (`sk-SK`, `pl-PL`, `de-DE`, `en-GB`), brand words ignored -> report. LanguageTool has **no Czech**.
 - **Hunspell** (e.g. `spylls`, pure Python, + LibreOffice dictionaries) for spelling in languages LanguageTool lacks.
 - **Optional, Czech-specific:** Korektor (ÚFAL) for Czech grammar/diacritics. Similar national tools exist for other languages; check before assuming none.
 - **Native-speaker-style agent review:** one subagent per language reads the rendered pages and returns a table (location, issue, fix, confidence). Filter known false positives first (brand words, house style rules, first-person verbs, heading punctuation conventions). This found bugs no checker sees: "four steps" above a three-step list (in every language), an imperative that should have been a description, wrong-language alt texts.
@@ -158,7 +158,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 
 ### 3.1 What to build
 - **`/llms.txt`** (spec: llmstxt.org): H1, blockquote summary, free text including **"Key facts:" as plain text, not an H2** (an H2 of bullets crashed the reference parser `llms_txt.parse_llms_file`), then H2 link lists per language (title + description per page), a **legal/privacy/account-deletion section outside `## Optional`** (tools like `llms_txt2ctx` skip Optional, and trust pages answer "is it legit?"), then the FAQ, then Optional (facts, llms-full). Validate with the reference parser.
-- **`/llms-full.txt`:** every published page in the main languages as Markdown, re-derived from `dist/`; fail loudly if a section has no page or known-stale strings remain; exclude decorative fragments. Note it drops image alts - facts that exist only as logo alts (e.g. partner names) never reach it.
+- **`/llms-full.txt`:** every published page in the main languages as Markdown, re-derived from `_dist/`; fail loudly if a section has no page or known-stale strings remain; exclude decorative fragments. Note it drops image alts - facts that exist only as logo alts (e.g. partner names) never reach it.
 - **`/ai/facts.json`:** **plain JSON**, not fake JSON-LD (a JSON-LD processor drops all non-schema keys). Figures "as stated on site", markets with dates, operating entities with IDs, regulated providers per market, support, awards with sources, apps, socials.
 - Optional `ai/summary.json`, `ai/faq.json`, `ai/service.json`, `/.well-known/ai.txt`: non-standard; their value is mostly checker score plus one more clean fact source. Cheap, so fine - but don't mistake them for ranking signals.
 - **Copy-level GEO:** answer-first summaries; plain "what it is / price / how it earns money / access model / users / markets / founders / operator" facts on consumer pages; **one boilerplate** reused everywhere (press page, about page, llms, facts).
@@ -166,8 +166,8 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 ### 3.2 Lessons
 - **Contradictions make AI answers hedge.** Method: a **claim inventory / contradiction table** - one row per claim, columns: claim, every page+language where it appears, the values found, the source of truth, the fix. Typical rows found in the real build (with *invented example values*):
   - market status: "now live in Country X" on one page vs a launch countdown on another;
-  - user count: "*500,000+ users worldwide*" vs "*500,000+ users in three countries*";
-  - volume: "*100M+ transactions*" on the site vs "*80M+*" in the press kit vs "*120M+*" in a social profile;
+  - user count: "*300,000+ users worldwide*" vs "*300,000+ users in three countries*";
+  - volume: "*40M+ transactions*" on the site vs "*35M+*" in the press kit vs "*45M+*" in a social profile;
   - growth metric: "*70 % of new users come via referral*" vs "*70 % of growth*" (two different metrics);
   - rating: one market's page showing another market's store rating;
   - three different names for the same regulated provider; two different account-deletion processes;
@@ -175,7 +175,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
   Fix contradictions **before** adding more schema.
 - **Perception test beats checker scores.** Fetch the key pages without JS as an AI user-agent would, write the answer an assistant would give from that text only, and list every hedge and its cause. Typical causes: business model missing on consumer pages ("free app that pays you" reads as too good to be true), key condition (withdrawal, fees) buried in FAQ, unexplained operator, unsourced superlatives ("bank-level security"), awards without source links, the weakest true rating shown while a stronger true one exists.
 - **Off-site entity data feeds the answers too.** Wikidata, Crunchbase, startup databases, EU/fintech maps, PitchBook-style profiles often carry an old name, founding year or user count. Write the corrections with exact property IDs; on Wikidata declare a conflict of interest. Agents are often blocked from editing these - prepare the text for a human. Add the Wikidata Q-ID to `sameAs` once the item is right.
-- **Extractability:** compare `trafilatura` output on static vs rendered HTML. Facts that only appear after JS are invisible to many fetchers. Inline number+label markup (`<b>500,000+</b><span>users</span>`) extracts as "500,000+users"; numbered steps as "1Send". Keep facts in static HTML and put whitespace or block boundaries between number and label.
+- **Extractability:** compare `trafilatura` output on static vs rendered HTML. Facts that only appear after JS are invisible to many fetchers. Inline number+label markup (`<b>300,000+</b><span>users</span>`) extracts as "300,000+users"; numbered steps as "1Send". Keep facts in static HTML and put whitespace or block boundaries between number and label.
 - Crawler access is necessary, not sufficient: allow-all robots + no bot-blocking WAF + fast static HTML.
 - **Never invent GEO signals:** no fake reviews, no fake blog/`Article` just to satisfy a checker, no unsourced "Top 10", no rating not shown on the page, no promised savings amounts. Checkers will dock points for a missing blog/RSS; leave them docked rather than fake it.
 - Checker scores seen in practice: two GEO checkers moved from low-80s to mid-90s after the work above. Treat that as hygiene, not proof of visibility.
@@ -199,7 +199,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 
 ## 4. Performance
 
-- **Inline -> hashed assets.** Pages exported from a design/preview tool carried fonts, images and video as base64: ~70 pages, ~85 MB, most of it data URIs of ~110 unique files. An optimizer moves each unique data URI to `assets/<hash>.<ext>`, re-encodes images to WebP (q~82, kept only if smaller), video to H.264 (CRF ~30, max 720 px, no audio, faststart), and moves every `<style>/<script>` > ~1.5 KB into a shared hashed file (the same block on 70 pages becomes one cached file). Result: ~95 % smaller HTML, typical page 60-95 KB. Sources untouched; output to `dist/`.
+- **Inline -> hashed assets.** Pages exported from a design/preview tool carried fonts, images and video as base64: ~70 pages, ~85 MB, most of it data URIs of ~110 unique files. An optimizer moves each unique data URI to `assets/<hash>.<ext>`, re-encodes images to WebP (q~82, kept only if smaller), video to H.264 (CRF ~30, max 720 px, no audio, faststart), and moves every `<style>/<script>` > ~1.5 KB into a shared hashed file (the same block on 70 pages becomes one cached file). Result: ~95 % smaller HTML, typical page 60-95 KB. Sources untouched; output to `_dist/`.
 - **Image sizing:** serve screen-sized WebP (e.g. 720 px phone screens instead of 1170), `srcset` 1x/2x. **Every srcset candidate and every JS-built asset path must be root-absolute** under nested clean URLs (`/assets/...`): relative candidates broke retina images on every `/xx/...` subpage.
 - Lazy-load below-the-fold media; videos load/play only when in view.
 - **Fonts:** self-host woff2, preload the main face; use `unicode-range` faces to swap e.g. a mono font for digits only, instead of loading a second family everywhere.
@@ -256,7 +256,7 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 - [ ] Inline scripts pass `node --check`; console clean at 390 and 1440 px, before and after consent.
 
 **Site files and hosting**
-- [ ] robots.txt allow-all + AI crawler groups + Sitemap; sitemap only indexable URLs with lastmod from finished pages; llms.txt parser-valid, legal section outside Optional; llms-full and `ai/*.json` re-derived from `dist/`.
+- [ ] robots.txt allow-all + AI crawler groups + Sitemap; sitemap only indexable URLs with lastmod from finished pages; llms.txt parser-valid, legal section outside Optional; llms-full and `ai/*.json` re-derived from `_dist/`.
 - [ ] Real 404, no soft-404 via proxy fallback; legacy/store paths 200 or 301 as intended; one canonical host; preview hosts `X-Robots-Tag: noindex`; security headers + CSP tested incl. token-bearing legacy pages.
 - [ ] Assets content-hashed + immutable cache; srcset and JS asset paths root-absolute; comments stripped.
 - [ ] Search consoles verified, sitemap submitted; check indexing of the new URLs a week later.

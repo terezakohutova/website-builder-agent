@@ -7,7 +7,7 @@
 import { launch, connect, goto, ev, wheel, consoleErrors, listPages, short } from './cdp.mjs';
 
 const [target, W = '1440'] = process.argv.slice(2);
-if (!target) { console.error('usage: node wheel.mjs <dir|url> [width]'); process.exit(2); }
+if (!target || !/^\d+$/.test(W)) { console.error('usage: node wheel.mjs <dir|url> [width]'); process.exit(2); }
 const w = +W, h = 844;
 const WATCH = process.env.QA_WATCH || 'null';
 const pages = await listPages(target);

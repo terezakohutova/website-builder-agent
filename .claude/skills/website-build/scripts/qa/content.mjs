@@ -7,7 +7,7 @@ import { launch, connect, goto, ev, listPages, short } from './cdp.mjs';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const [target, mode = 'text', outDir = 'qa-text', W = '1440'] = process.argv.slice(2);
-if (!target || !['text', 'struct', 'heads'].includes(mode)) { console.error('usage: node content.mjs <dir|url> <text|struct|heads> [outDir] [width]'); process.exit(2); }
+if (!target || !['text', 'struct', 'heads'].includes(mode) || !/^\d+$/.test(W)) { console.error('usage: node content.mjs <dir|url> <text|struct|heads> [outDir] [width]'); process.exit(2); }
 const probe = readFileSync(new URL(`./probe-${mode}.js`, import.meta.url), 'utf-8');
 const w = +W, mobile = w < 600;
 const pages = await listPages(target);

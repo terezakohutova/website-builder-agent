@@ -1,0 +1,9 @@
+$ node content.mjs examples/sample-site struct
+
+### index-de.html - none
+
+### index.html - none
+
+### privacy.html - none
+
+[exit 0, 4.0 s]

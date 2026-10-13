@@ -8,7 +8,7 @@
 import { launch, connect, goto, ev, shot, emulateMedia, listPages, short, scrollToY, wait, J } from './cdp.mjs';
 
 const [target, out, mode = 'forcedark', W = '390'] = process.argv.slice(2);
-if (!target || !out) { console.error('usage: node modes.mjs <dir|url> <outDir> [forcedark|dark|reduced] [width]'); process.exit(2); }
+if (!target || !out || !['forcedark', 'dark', 'reduced'].includes(mode) || !/^\d+$/.test(W)) { console.error('usage: node modes.mjs <dir|url> <outDir> [forcedark|dark|reduced] [width]'); process.exit(2); }
 const w = +W, h = w < 600 ? 844 : 900, mobile = w < 600;
 const args = mode === 'forcedark' ? ['--force-dark-mode', '--enable-features=WebContentsForceDark', '--blink-settings=forceDarkModeEnabled=true'] : [];
 const feats = mode === 'reduced' ? [{ name: 'prefers-reduced-motion', value: 'reduce' }] : [{ name: 'prefers-color-scheme', value: 'dark' }];

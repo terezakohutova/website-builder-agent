@@ -49,6 +49,8 @@ This file is the route; the references hold the detail.
 
 ## 3. QA in one breath
 
+Paths are relative to this skill folder. `node scripts/qa/jscheck.mjs site/_dist` first, then
 `node scripts/qa/audit.mjs <folder-or-url>` with `QA_WIDTHS=1440x900,1280x800,1024x768,768x1024,430x932,390x844,360x780,320x700`,
-then `anchors.mjs`, `modes.mjs`, `console-sweep.mjs`, `jscheck.mjs`, `shots.mjs` (look at the screenshots yourself),
-and `inapp.mjs` for WebKit plus the Instagram/Facebook/TikTok in-app browsers. Checklists: `04`, sections "pre-publish" and "post-deploy".
+then `anchors.mjs`, `modes.mjs`, `console-sweep.mjs`, `shots.mjs` (look at the screenshots yourself),
+and `inapp.mjs` for WebKit plus the Instagram/Facebook/TikTok in-app browsers. Every script exits 2 on bad
+usage; the checking ones exit 1 on a finding. Checklists: `04`, sections "pre-publish" and "post-deploy".

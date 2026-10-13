@@ -8,9 +8,11 @@ Background and lessons: `../../references/04-qa-devices-modes.md`.
 
 ## Targets
 
-Every script takes a **target** (there is no default site - pass one):
-- a **local folder**: pages = its `*.html` (not `_*`, not `*.bak*`), loaded as `file:///...`. Fine for a static
-  build folder. For clean URLs, rewrites or absolute `/assets/...` paths, serve it instead
+Every script takes a **target** (there is no default site - pass one). Bad usage exits 2 before any browser
+starts. A recorded run against the fictional sample site is in
+[`examples/sample-qa-report/`](../../../../../examples/sample-qa-report/README.md).
+- a **local folder** (relative or absolute): pages = its top-level `*.html` (not `_*`, not `*.bak*`), loaded as
+  `file:///...`. Fine for a static build folder. For clean URLs, rewrites or absolute `/assets/...` paths, serve it instead
   (`python -m http.server 8080 --bind 127.0.0.1` from the parent dir) and pass the URL.
 - a **base URL** (`https://www.example.com` or `http://127.0.0.1:8080`): pages = every `<loc>` in `/sitemap.xml`,
   or just the base if there is none.
@@ -22,6 +24,7 @@ Common env:
 | `QA_PAGES` | all | comma list of substrings; keep only matching URLs |
 | `QA_PORT` | per script | debugging port; give parallel runs different ports |
 | `CHROME_PATH` | auto | Chrome binary |
+| `CHROME_ARGS` | - | extra Chrome flags, space-separated (e.g. `--no-sandbox` on Linux CI runners that need it) |
 
 Site-specific selectors are always env params (your site's class names go here):
 | var | used by | example |
@@ -44,14 +47,14 @@ Suggested full width set: `1440x900,1280x800,1024x768,768x1024,430x932,390x844,3
 | `audit.mjs <target> [out.json]` | per page x width: leaf elements past the viewport, document wider than the device, broken images, JS exceptions / console errors. `QA_SCROLL=1` scrolls through first | any finding |
 | `content.mjs <target> text <outDir>` | visible-copy dump per page (`TAG :: text`) - read it, it finds what screenshots hide | - |
 | `content.mjs <target> struct` | headings whose box has no body copy | - |
-| `content.mjs <target> heads - [width]` | headings wrapping into more lines than needed (`window.__QA_HEAD_SKIP` = selectors to skip) | - |
+| `content.mjs <target> heads - [width]` | headings wrapping into more lines than needed (`-` fills the unused outDir slot; `window.__QA_HEAD_SKIP` = selectors to skip) | - |
 | `shots.mjs <target> <outDir> [maxTiles]` | scroll-tiled screenshots (92 % viewport steps), `QA_HIDE=` selectors to hide (cookie bar) | - |
-| `anchors.mjs <target> [width]` | clicks every `a[href^="#"]` from mid-page (and from the menu with `QA_BURGER`/`QA_MENU`), target top must land in [-5, `QA_ANCHOR_MAX`=200] | a miss |
+| `anchors.mjs <target> [width]` | clicks every `a[href^="#"]` from mid-page (and from the menu with `QA_BURGER`/`QA_MENU`); the target top must land in [-5, `QA_ANCHOR_MAX`=200] and must not sit under another element (a fixed nav) | a miss or a covered target |
 | `wheel.mjs <target> [width]` | real wheel bursts down/up, prints `scrollY` + `QA_WATCH` expression (e.g. nav hidden class) | - |
 | `modes.mjs <target> <outDir> forcedark\|dark\|reduced [width]` | Chrome forced dark (Android auto-dark), `prefers-color-scheme: dark`, `prefers-reduced-motion`; prints color-scheme, running animations, smooth-scroll present; 3 shots | - |
 | `console-sweep.mjs <url> [out.json]` | live/preview: every sitemap URL x widths, cookies cleared, scrolled; exceptions, console error/warn, CSP report-only, failed requests, HTTP >= 400; then after `QA_ACCEPT` click on `QA_POST` URLs. `QA_IGNORE=` regex | - |
 | `axe.mjs <target> [out.json]` | axe-core (wcag2a/aa, 21, 22aa, best-practice) with the consent bar open and after `QA_DISMISS` + scroll-through. Needs `AXE_PATH=.../axe-core/axe.min.js` | any violation |
-| `jscheck.mjs <dir>` | `node --check` on every inline `<script>` + control-character scan (the `\x01` trap) | any failure |
+| `jscheck.mjs <dir>` | `node --check` on every inline JS `<script>` in every `*.html` below `<dir>` (recursive; JSON-LD, templates and other data types skipped) + control-character scan (the `\x01` trap) | any failure |
 | `inapp.mjs <url> [outDir]` | WebKit + social in-app browser emulation (see below) | - |
 | `probe-*.js` | in-page probes injected by `content.mjs` (text, structure, heading wrap) | - |
 
@@ -59,9 +62,9 @@ Suggested full width set: `1440x900,1280x800,1024x768,768x1024,430x932,390x844,3
 
 ```bash
 Q=.claude/skills/website-build/scripts/qa
-node $Q/jscheck.mjs site/dist
-QA_WIDTHS=1440x900,768x1024,390x844,360x780,320x700 node $Q/audit.mjs site/dist qa-audit.json
-node $Q/content.mjs site/dist text qa-text && node $Q/content.mjs site/dist struct
+node $Q/jscheck.mjs site/_dist
+QA_WIDTHS=1440x900,768x1024,390x844,360x780,320x700 node $Q/audit.mjs site/_dist qa-audit.json
+node $Q/content.mjs site/_dist text qa-text && node $Q/content.mjs site/_dist struct
 QA_HIDE=".cookie-bar" node $Q/shots.mjs http://127.0.0.1:8080 qa-shots 12
 QA_BURGER=".menu-toggle" QA_MENU=".site-menu" node $Q/anchors.mjs http://127.0.0.1:8080 390
 node $Q/modes.mjs https://www.example.com qa-modes forcedark 390
@@ -76,6 +79,9 @@ QA_ACCEPT=".cookie-accept" QA_POST="/$|/(de|fr|en)$" node $Q/console-sweep.mjs h
   use `Input.dispatchTouchEvent` start/move/end sequences instead.
 - `file://` refuses `fetch`, service workers and absolute `/` paths; serve over http for anything beyond static pages.
 - Synthetic `el.click()` skips hit-testing; use `clickAt` (real mouse events) to catch overlays covering buttons.
+  `anchors.mjs` still clicks synthetically: it tests where the target lands, not whether the link is reachable.
+- With `html{scroll-behavior:smooth}` a plain `window.scrollTo` animates, so `scrollToY` passes
+  `behavior:'instant'`. Before that fix every sample-site anchor test that started mid-page failed.
 - Chrome blocks `mailto:` without a user gesture; a `[log] Not allowed to launch 'mailto:...'` from a scripted
   click is the harness, not the site.
 - Throttle live runs (one load at a time, >= 1.5 s apart) - it is someone's production site and its analytics.

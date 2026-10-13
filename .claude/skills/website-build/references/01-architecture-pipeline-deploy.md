@@ -54,8 +54,9 @@ my-site/                      # its own git repo from the first file (see sectio
     i18n/
       strings-sk.json         # master string -> translation dictionaries (hand-edit)
       strings-de.json
-    seo/
+    data/
       seo_data.py             # titles, descriptions, JSON-LD copy (review THIS, not the pages)
+      markets.py              # per-market tables: ENTITY, MONEY, STORE, SOCIAL, RATING ... (reference 03)
     _dist/                    # GENERATED optimised copy - never edit, not committed
     _deploy/                  # GENERATED host copy, git working tree of the deploy repo
   build/
@@ -67,12 +68,16 @@ my-site/                      # its own git repo from the first file (see sectio
     seo/                      # seo.py, verify.py, llms-refresh.py, lastmod-final.py
     optimize/                 # optimize.py, strip-comments.mjs
     vendor/                   # self-hosted third-party libs (pinned versions)
-  qa/                         # CDP/Playwright scripts, axe, Lighthouse, preview test
+  design/                     # originals, never served: mockups/png3x, icons, logos (+ logos.json), awards, fonts
+  qa/                         # CDP/Playwright scripts, axe, Lighthouse, preview test (generic part: scripts/qa/)
   backups/                    # dated snapshots of anything NOT in git (CMS exports, DNS zone, prod capture)
   notes/                      # decisions, changelog
 ```
 
 - Keep backups, temp scripts and reports **out of `site/src/`** (section 12 explains the leak).
+- The other references use exactly these names: `site/src/`, `site/i18n/`, `site/data/`, `site/_dist/`,
+  `site/_deploy/`, `build/passes/`, `build/injectors/`, `design/`, `qa/`. The short forms `_dist/` and
+  `_deploy/` always mean `site/_dist/` and `site/_deploy/`.
 - Name per-round scripts by topic, not by date only (`passes/copy-review-round2.py`), and never rename
   them once the build references them.
 
@@ -180,7 +185,7 @@ Why this order:
 - **`seo.py` is the last writer of source pages.** Any builder run after it puts the master `<head>` back.
   seo.py writes only between `<!--seo:start-->`/`<!--seo:end-->` and encodes non-ASCII as character
   references so i18n builders pass it through untranslated and leftover checks don't flag it. Test on a copy
-  via an env var (`SEO_WEB=<dir>`); verify with `verify.py`. Copy lives in `seo_data.py`.
+  via an env var (`SEO_WEB=<dir>`); verify with `verify.py`. Copy lives in `site/data/seo_data.py`.
 - **`optimize.py` after seo.py; everything tracking/consent-related after optimize.py, on `_dist`.** Sources
   stay readable (no hashed names, no consent code) so builders and text matching keep working.
 - **`llms-refresh.py` and `lastmod-final.py` are truly last.** `_dist` passes and the CMS change pages after

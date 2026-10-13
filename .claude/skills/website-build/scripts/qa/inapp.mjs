@@ -8,9 +8,12 @@
 // viewport, dark mode for TikTok). It does not reproduce the apps' own chrome or their link handling.
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const { webkit, chromium, devices } = await import(process.env.PW ? pathToFileURL(process.env.PW).href : 'playwright');
 const BASE = (process.argv[2] || '').replace(/\/$/, '');
-if (!BASE) { console.error('usage: node inapp.mjs <base-url> [out-dir]'); process.exit(2); }
+if (!/^https?:\/\//.test(BASE)) { console.error('usage: node inapp.mjs <http(s)-base-url> [out-dir]'); process.exit(2); }
+let pw;
+try { pw = await import(process.env.PW ? pathToFileURL(process.env.PW).href : 'playwright'); }
+catch (e) { console.error('playwright not found: `npm i playwright && npx playwright install webkit chromium`, or set PW=<path to playwright/index.mjs>\n' + e.message); process.exit(2); }
+const { webkit, chromium, devices } = pw;
 const OUT = process.argv[3] || 'out';
 fs.mkdirSync(OUT, { recursive: true });
 const PAGES = (process.env.PAGES || '/').split(',');

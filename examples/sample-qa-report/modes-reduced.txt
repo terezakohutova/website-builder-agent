@@ -1,0 +1,4 @@
+$ QA_PAGES=index.html node modes.mjs examples/sample-site <repo>\examples\sample-qa-report\modes reduced 390
+index.html reduced {"colorScheme":"light only","bodyBg":"rgb(255, 255, 255)","lenis":false,"runningAnimations":0,"scrollBehavior":"auto"}
+
+[exit 0, 4.7 s]

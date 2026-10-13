@@ -5,10 +5,12 @@
 //
 // Env:
 //   CHROME_PATH  Chrome/Chromium binary (default: the usual Windows / macOS / Linux locations)
+//   CHROME_ARGS  extra Chrome flags, space-separated (e.g. "--no-sandbox" on some Linux CI runners)
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -21,20 +23,29 @@ export const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // launch(port, { args }) - headless Chrome with a throwaway profile. Use a different port per
 // parallel process (two launches on one port = the second attaches to the first browser).
+// The browser is killed and its profile removed when the Node process exits, also when a script throws
+// halfway (an orphaned headless Chrome keeps the port busy for the next run).
 export async function launch(port = 9333, { args = [], gpu = false } = {}) {
   const prof = mkdtempSync(join(tmpdir(), 'webqa-'));
+  const extra = (process.env.CHROME_ARGS || '').split(/\s+/).filter(Boolean);
   const p = spawn(CHROME, [
     '--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${prof}`,
     '--no-first-run', '--no-default-browser-check', ...(gpu ? [] : ['--disable-gpu']),
     '--allow-file-access-from-files', '--hide-scrollbars',
-    '--force-device-scale-factor=1', ...args, 'about:blank'
+    '--force-device-scale-factor=1', ...extra, ...args, 'about:blank'
   ], { stdio: 'ignore' });
+  let spawnError = null;
+  p.on('error', e => { spawnError = e; });
+  process.on('exit', () => {
+    try { p.kill(); } catch {}
+    try { rmSync(prof, { recursive: true, force: true, maxRetries: 3 }); } catch {}
+  });
   let info = null;
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 80 && !spawnError; i++) {
     try { info = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); break; }
     catch { await wait(250); }
   }
-  if (!info) throw new Error('chrome did not start (CHROME_PATH=' + CHROME + ')');
+  if (!info) throw new Error(`chrome did not start on port ${port} (CHROME_PATH=${CHROME}${spawnError ? ', ' + spawnError.message : ''})`);
   return { proc: p, port, wsUrl: info.webSocketDebuggerUrl };
 }
 
@@ -103,8 +114,10 @@ export async function shot(s, path, { fullPage = false, clip = null } = {}) {
 
 // Scroll that works through smooth-scroll libraries: Lenis (window.__lenis or window.lenis) swallows
 // window.scrollTo, so jump it with immediate:true when present, then also set the native position.
+// behavior:'instant' matters: with `html{scroll-behavior:smooth}` a plain scrollTo animates, and the next
+// probe (or anchor click) runs while the page is still moving.
 export async function scrollToY(s, y) {
-  return ev(s, `(()=>{const L=window.__lenis||window.lenis;try{L&&L.scrollTo&&L.scrollTo(${y},{immediate:true,force:true})}catch(e){};window.scrollTo(0,${y});return Math.round(scrollY)})()`);
+  return ev(s, `(()=>{const L=window.__lenis||window.lenis;try{L&&L.scrollTo&&L.scrollTo(${y},{immediate:true,force:true})}catch(e){};window.scrollTo({top:${y},left:0,behavior:'instant'});return Math.round(scrollY)})()`);
 }
 
 // Real wheel input (goes through Lenis momentum exactly like a user's mouse).
@@ -183,18 +196,24 @@ export async function listPages(target) {
     } catch { urls = []; }
     if (!urls.length) urls = [base + '/'];
   } else {
-    const dir = target.replace(/\\/g, '/').replace(/\/$/, '');
+    // resolve() makes relative targets work ("site/_dist"); pathToFileURL handles drive letters and spaces
+    const dir = resolve(target);
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`target is neither an http(s) URL nor a folder: ${target}`);
     urls = readdirSync(dir).filter(f => f.endsWith('.html') && !f.startsWith('_') && !/\.bak/.test(f)).sort()
-      .map(f => 'file:///' + dir.replace(/^\//, '') + '/' + f);
+      .map(f => pathToFileURL(join(dir, f)).href);
   }
   return filt ? urls.filter(u => filt.some(x => u.includes(x))) : urls;
 }
 
 // QA_WIDTHS="1440x900,390x844" -> [[1440,900,false],[390,844,true]] (mobile when width < 600)
+// A bare width ("390") gets a default height. Anything else that is not WxH throws, so a typo fails loudly
+// instead of reaching Chrome as a NaN viewport.
 export function widths(def = '1440x900,390x844') {
-  return (process.env.QA_WIDTHS || def).split(',').map(x => {
-    const [w, h] = x.trim().split('x').map(Number);
-    return [w, h || (w < 600 ? 844 : 900), w < 600];
+  return (process.env.QA_WIDTHS || def).split(',').map(x => x.trim()).filter(Boolean).map(x => {
+    const m = /^(\d{2,5})(?:x(\d{2,5}))?$/i.exec(x);
+    if (!m) throw new Error(`QA_WIDTHS: "${x}" is not WxH (e.g. 390x844)`);
+    const w = +m[1];
+    return [w, m[2] ? +m[2] : (w < 600 ? 844 : 900), w < 600];
   });
 }
 

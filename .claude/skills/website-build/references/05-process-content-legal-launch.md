@@ -135,7 +135,7 @@ Write these into your project's copy rules file before the first draft; each cau
 - **Launch year vs registration year**: decide which is "founded" in copy and which goes into structured data.
 - **Future launches in future tense** with the date ("from 1 March"); after launch a pass must flip the tense (a countdown removes itself, copy does not). Decks/pitches may use month only; don't copy web strings into decks.
 - **Founder-name spelling comes from the company register and the owner**, never a spellchecker - a proofreading pass "corrected" a founder's surname site-wide.
-- **Currency placement per language** (e.g. `5 €` with a no-break space in most EU languages, `€5` in English). Enforce with a pass and a grep on the output; it flipped three times when not written down.
+- **Currency placement per language** (e.g. `8 €` with a no-break space in most EU languages, `€8` in English). Enforce with a pass and a grep on the output; it flipped three times when not written down.
 - **Reward amounts per market** and their conditions in one table; a FAQ that must hold in every market can omit the amount. Mockups must not contradict the copy (a screen showing a minimum balance next to "I'll send you X").
 - **Licence/regulatory wording copied from the contract or register, per market**, confirmed by the legal owner. Example: "registered with regulator X via provider Y" is not "licensed"; never claim a licence the company itself does not hold.
 - **Third-party brand names**: remove any partner whose affiliate terms forbid publicity (also from HTML/CSS comments - strip comments from the output); replace trademarks with generic categories where in doubt.

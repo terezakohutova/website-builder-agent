@@ -8,7 +8,7 @@
 import { launch, connect, goto, ev, listPages, short, scrollToY, wait } from './cdp.mjs';
 
 const [target, W = '390'] = process.argv.slice(2);
-if (!target) { console.error('usage: node anchors.mjs <dir|url> [width]'); process.exit(2); }
+if (!target || !/^\d+$/.test(W)) { console.error('usage: node anchors.mjs <dir|url> [width]'); process.exit(2); }
 const w = +W, h = w < 600 ? 844 : 900, mobile = w < 600;
 const BURGER = process.env.QA_BURGER || '', MENU = process.env.QA_MENU || '';
 const MAXTOP = +(process.env.QA_ANCHOR_MAX || 200);
@@ -26,12 +26,18 @@ for (const u of pages) {
       : await ev(s, `(()=>{const a=[...document.querySelectorAll(${sel})].find(x=>!${JSON.stringify(MENU)}||!x.closest(${JSON.stringify(MENU || 'x-none')}));if(!a)return 'none';a.click();return 'ok'})()`);
     if (clicked !== 'ok') continue;
     await wait(2500);
-    const r = await ev(s, `JSON.stringify((()=>{const el=document.getElementById(${JSON.stringify(decodeURIComponent(href.slice(1)))});const d=document.documentElement;return {top:el?Math.round(el.getBoundingClientRect().top):'MISSING',atEnd:scrollY>=d.scrollHeight-innerHeight-2,vh:innerHeight}})())`);
-    const { top, atEnd, vh } = JSON.parse(r);
+    // covered = the point just inside the target's top edge belongs to another element (a fixed nav, a banner)
+    const r = await ev(s, `JSON.stringify((()=>{const el=document.getElementById(${JSON.stringify(decodeURIComponent(href.slice(1)))});const d=document.documentElement;
+      if(!el)return {top:'MISSING'};const b=el.getBoundingClientRect();
+      const x=Math.min(Math.max(b.left+Math.min(b.width/2,40),0),innerWidth-1),y=Math.min(Math.max(b.top+Math.min(b.height/2,6),0),innerHeight-1);
+      const hit=document.elementFromPoint(x,y);const by=hit&&hit!==el&&!el.contains(hit)&&!hit.contains(el)?hit:null;
+      return {top:Math.round(b.top),atEnd:scrollY>=d.scrollHeight-innerHeight-2,vh:innerHeight,
+        covered:by?by.tagName.toLowerCase()+(by.id?'#'+by.id:'')+(typeof by.className==='string'&&by.className?'.'+by.className.trim().split(/\\s+/)[0]:''):null}})())`);
+    const { top, atEnd, vh, covered } = JSON.parse(r);
     // a target near the page end cannot reach the top: OK if the page is scrolled to its end and the target is on screen
-    const ok = typeof top === 'number' && top >= -5 && (top <= MAXTOP || (atEnd && top < vh));
+    const ok = typeof top === 'number' && top >= -5 && (top <= MAXTOP || (atEnd && top < vh)) && !covered;
     if (!ok) fails++;
-    console.log((ok ? 'ok   ' : 'FAIL ') + short(u), via, href, '-> top', top);
+    console.log((ok ? 'ok   ' : 'FAIL ') + short(u), via, href, '-> top', top, covered ? 'covered by ' + covered : '');
   }
 }
 console.log(`\n${fails} failing anchors`);

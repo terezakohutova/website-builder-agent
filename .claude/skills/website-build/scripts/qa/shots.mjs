@@ -7,7 +7,7 @@
 import { launch, connect, goto, ev, shot, listPages, widths, short, scrollToY, wait } from './cdp.mjs';
 
 const [target, out, max = '26'] = process.argv.slice(2);
-if (!target || !out) { console.error('usage: node shots.mjs <dir|url> <outDir> [maxTiles]'); process.exit(2); }
+if (!target || !out || !/^\d+$/.test(max)) { console.error('usage: node shots.mjs <dir|url> <outDir> [maxTiles]'); process.exit(2); }
 const pages = await listPages(target);
 const { proc, wsUrl } = await launch(+(process.env.QA_PORT || 9340)); const s = await connect(wsUrl);
 for (const u of pages) for (const [w, h, mobile] of widths()) {

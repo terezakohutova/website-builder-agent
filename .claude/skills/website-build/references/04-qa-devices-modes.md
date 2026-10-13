@@ -5,7 +5,7 @@ multi-language static marketing site with smooth scrolling, a consent bar, app-s
 in-app webview area), from first draft through go-live and the hotfix weeks after it.
 Format: **rule** - why - how. SEO/GEO depth lives in another reference; here only the testing method.
 The generic harness is in `../scripts/qa/` (usage in its README). Paths below: `qa/` = your QA script folder,
-`build/passes/` = scripted review passes, `dist/` = the build output.
+`build/passes/` = scripted review passes, `_dist/` = the build output (`site/_dist/` in the layout of reference 01).
 
 ---
 
@@ -62,10 +62,10 @@ The generic harness is in `../scripts/qa/` (usage in its README). Paths below: `
   drifting screenshot coordinates, wedged tabs.
 
 ### Local vs preview vs live
-- **Local folder** (`file:///.../dist/<page>.html`): fast, but no clean URLs, rewrites, headers, CSP or
+- **Local folder** (`file:///.../_dist/<page>.html`): fast, but no clean URLs, rewrites, headers, CSP or
   absolute `/assets` paths.
 - **Local server** for anything interactive: `python -m http.server <port> --bind 127.0.0.1` from the
-  **parent** directory. On Windows a server whose cwd is inside `dist/` locks it and the next clean build
+  **parent** directory. On Windows a server whose cwd is inside `_dist/` locks it and the next clean build
   fails with "Device busy". A tiny HTTP/1.1 keep-alive + gzip server is closer to a real host for perf runs.
 - **Preview deployment** (the host's preview URL or a side-branch share link) before production.
 - **Live** after merge. QA again after every push to production; preview is not production (headers,
@@ -281,7 +281,7 @@ idempotent scripted pass** (`build/passes/review-<round>.py`) that edits the **s
   present, skip (idempotent). If **neither** is found, **fail the build** - the target vanished, someone
   changed the source, and the feedback would silently stop being applied.
 - Passes run in order on every build, so a fresh build always contains every approved review round.
-- Never hand-edit generated files (language versions, `dist/`); the next build would silently revert it.
+- Never hand-edit generated files (language versions, `_dist/`); the next build would silently revert it.
 - Keep a short changelog per pass (what feedback item each replacement answers) so reviewers can verify.
 
 ---

@@ -1,0 +1,29 @@
+$ QA_WIDTHS=1440x900,1280x800,1024x768,768x1024,430x932,390x844,360x780,320x700 node audit.mjs examples/sample-site <repo>\examples\sample-qa-report\audit.json
+ok   index-de.html @1440
+ok   index-de.html @1280
+ok   index-de.html @1024
+ok   index-de.html @768
+ok   index-de.html @430
+ok   index-de.html @390
+ok   index-de.html @360
+ok   index-de.html @320
+ok   index.html @1440
+ok   index.html @1280
+ok   index.html @1024
+ok   index.html @768
+ok   index.html @430
+ok   index.html @390
+ok   index.html @360
+ok   index.html @320
+ok   privacy.html @1440
+ok   privacy.html @1280
+ok   privacy.html @1024
+ok   privacy.html @768
+ok   privacy.html @430
+ok   privacy.html @390
+ok   privacy.html @360
+ok   privacy.html @320
+
+3 pages x 8 widths, 0 with issues
+
+[exit 0, 25.8 s]

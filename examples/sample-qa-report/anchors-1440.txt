@@ -1,0 +1,11 @@
+$ node anchors.mjs examples/sample-site 1440
+ok   index-de.html page #funktionen -> top 76 
+ok   index-de.html page #ablauf -> top 76 
+ok   index-de.html page #faq -> top 224 
+ok   index.html page #features -> top 76 
+ok   index.html page #how -> top 76 
+ok   index.html page #faq -> top 224 
+
+0 failing anchors
+
+[exit 0, 23.8 s]

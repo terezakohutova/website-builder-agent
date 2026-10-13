@@ -1,0 +1,4 @@
+$ node jscheck.mjs examples/sample-site
+3 html files, 2 inline scripts checked, 0 failures
+
+[exit 0, 0.2 s]

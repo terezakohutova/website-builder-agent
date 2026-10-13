@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>Lumen Notes - a fictional note app (sample site)</title>
+<meta name="description" content="A fictional two-language sample site used to demonstrate and test the QA harness in this repository. Lumen Notes is not a real product.">
+<link rel="alternate" hreflang="en" href="index.html">
+<link rel="alternate" hreflang="de" href="index-de.html">
+<link rel="stylesheet" href="assets/site.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"Lumen Notes (sample)","inLanguage":"en"}]}
+</script>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" width="28" height="28" alt=""> Lumen Notes</a>
+    <nav class="links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="lang" href="index-de.html" hreflang="de">DE</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <p class="note">Fictional sample site. Nothing here describes a real product.</p>
+      <h1 class="xl">Notes that find you again.</h1>
+      <p class="lead">Lumen Notes is an invented app used to show what the QA harness in this repository checks: overflow at every width, broken images, console errors, inline script syntax and same-page anchors.</p>
+      <a class="btn" href="#how">See how it works</a>
+    </div>
+  </section>
+
+  <section id="features" class="band">
+    <div class="wrap">
+      <h2 class="lg">Features</h2>
+      <ul class="cards">
+        <li><h3>Quick capture</h3><p>Write a note in two taps. Long German compounds like Notizbuchverwaltungsfunktion still wrap.</p></li>
+        <li><h3>Search</h3><p>Find any note by a word you remember, in any language you wrote it in.</p></li>
+        <li><h3>Offline</h3><p>Everything works without a connection and syncs when you are back online.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="how" class="band alt">
+    <div class="wrap">
+      <h2 class="lg">How it works</h2>
+      <ol class="steps">
+        <li><b>1</b> <span>Install the app.</span></li>
+        <li><b>2</b> <span>Write your first note.</span></li>
+        <li><b>3</b> <span>Search for it a week later.</span></li>
+      </ol>
+      <p class="counter">Notes written on this page: <span id="count">0</span> <button type="button" id="add">Add one</button></p>
+    </div>
+  </section>
+
+  <section id="faq" class="band">
+    <div class="wrap">
+      <h2 class="lg">FAQ</h2>
+      <details open><summary>Is Lumen Notes real?</summary><p>No. It is a fictional product for a test fixture.</p></details>
+      <details><summary>Why does this page exist?</summary><p>So the QA scripts have a small, honest target and the report in <code>qa-report/</code> is reproducible.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Sample site, MIT licensed with the rest of the repository. <a href="privacy.html">Privacy</a></p>
+  </div>
+</footer>
+
+<div class="cookie-bar" role="dialog" aria-label="Cookies" hidden>
+  <p>This sample stores one choice in localStorage. Nothing is sent anywhere.</p>
+  <button type="button" class="cookie-accept">OK</button>
+</div>
+
+<script>
+(() => {
+  const bar = document.querySelector('.cookie-bar');
+  let seen = false;
+  try { seen = localStorage.getItem('sample-consent') === '1'; } catch (e) {}
+  if (!seen) bar.hidden = false;
+  bar.querySelector('.cookie-accept').addEventListener('click', () => {
+    try { localStorage.setItem('sample-consent', '1'); } catch (e) {}
+    bar.hidden = true;
+  });
+  let n = 0;
+  const out = document.getElementById('count');
+  document.getElementById('add').addEventListener('click', () => { out.textContent = String(++n); });
+})();
+</script>
+</body>
+</html>

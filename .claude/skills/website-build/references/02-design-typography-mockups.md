@@ -2,13 +2,13 @@
 
 How a multi-language marketing site (typically for a mobile app) should LOOK and MOVE, distilled from a real production build. Each lesson is: rule, why (the incident that taught it), where it lives in the suggested layout.
 
-Suggested layout used throughout:
-- `site/src/` - hand-edited source pages in the primary language (tokens, components, inline JS).
-- `site/src/i18n/` - translation dictionaries; language versions are GENERATED from the source.
-- `build/passes/` - idempotent scripts that transform the source (typography injection, review fixes, font subsetting, image swaps).
-- `build/qa/` - headless-browser measurement harness (overflow, contrast, line breaks, nav state, dark mode).
-- `assets/` - mockups, icons, logos, fonts (originals + web exports).
-- `dist/` - build output, never hand-edited.
+Folder names follow the layout in `01-architecture-pipeline-deploy.md` section 2:
+- `site/src/` - hand-edited source pages in the master language (tokens, components, inline JS); `site/src/assets/` holds the runtime files the injectors insert (typo.js/css, mobile.css/js, links.js).
+- `site/i18n/` - translation dictionaries; language versions are GENERATED from the source.
+- `build/injectors/` and `build/passes/` - idempotent scripts that transform the source (typography injection, review fixes, font subsetting, image swaps).
+- `design/` - originals that are never served: mockups, icons, logos, awards, fonts.
+- `qa/` - headless-browser measurement harness (overflow, contrast, line breaks, nav state, dark mode).
+- `site/_dist/` - build output, never hand-edited.
 
 Put long comments above non-obvious CSS rules explaining WHY (incident + what was tried). Before changing a rule, read its comment.
 
@@ -38,18 +38,18 @@ Read with: `01-*` (build/publish pipeline) for how passes are chained.
 
 ## B. Design tokens (example palette)
 
-The values below are an example of the token SHAPE that worked: a single brand hue scale, one high-energy accent for CTAs, status colours, a grey ramp, and separate ink sets per ground. Swap in your own brand.
+The values below are illustrative (not any real brand's palette); what carries over is the token SHAPE that worked: a single brand hue scale, one high-energy accent for CTAs, status colours, a grey ramp, and separate ink sets per ground. Swap in your own brand.
 
 **Colour (take values from the brand manual / design file, verified, not eyedropped):**
-- Brand scale (light to darkest): `--brand-1:#DBC4E6` `--brand-2:#C5A7E1` `--brand-3:#9364CC` `--brand-4:#783CBD` `--brand-5:#62269E` `--brand-6:#5B2B82` `--brand-7:#31006F` `--brand-extra-dark:#281540`.
-- Dark surfaces: `--dark-surface:#5B4873`, `--dark-surface-2:#6B5788` (hover step; mark tokens you invent vs. manual tokens).
-- Action: `--action-primary:#D4F285` (accent, every primary CTA), `--action-secondary:#FFFFFF`, `--action-tertiary:#F1EBF8`.
-- Status: `--positive:#009F5C` / `--positive-light:#E5F5EF`; `--negative:#FF5139` / `--negative-light:#FFEEEB`.
-- Greys: `--grey-50:#F7F5FA` `--grey-100:#EFEDF2` `--grey-200:#E2DEE8` `--grey-400:#A9A2B4` `--grey-600:#6B6377`.
-- Ink on light/accent: `--ink:#31006F`, `--ink-2:rgba(49,0,111,.72)`, `--ink-3:rgba(49,0,111,.78)`, `--rule:rgba(49,0,111,.14)`, `--rule-2:rgba(49,0,111,.28)`. The tertiary tint started at .64 and was raised after "small text is hard to read": one token feeds every tertiary label, so one edit fixed the whole site.
+- Brand scale (light to darkest): `--brand-1:#D6E4F7` `--brand-2:#AFC8EE` `--brand-3:#6E97DB` `--brand-4:#3F6FC6` `--brand-5:#2A55A3` `--brand-6:#22447F` `--brand-7:#0F2A5C` `--brand-extra-dark:#0A1B3B`.
+- Dark surfaces: `--dark-surface:#3A4E73`, `--dark-surface-2:#4A5F86` (hover step; mark tokens you invent vs. manual tokens).
+- Action: `--action-primary:#FFB547` (accent, every primary CTA), `--action-secondary:#FFFFFF`, `--action-tertiary:#EEF3FB`.
+- Status: `--positive:#1E9E63` / `--positive-light:#E6F5EE`; `--negative:#E5484D` / `--negative-light:#FDECEC`.
+- Greys: `--grey-50:#F6F7FA` `--grey-100:#ECEEF3` `--grey-200:#DDE1EA` `--grey-400:#A3AABA` `--grey-600:#626B7D`.
+- Ink on light/accent: `--ink:#0F2A5C`, `--ink-2:rgba(15,42,92,.72)`, `--ink-3:rgba(15,42,92,.78)`, `--rule:rgba(15,42,92,.14)`, `--rule-2:rgba(15,42,92,.28)`. The tertiary tint started at .64 and was raised after "small text is hard to read": one token feeds every tertiary label, so one edit fixed the whole site.
 - Ink on deep: `--on-deep:#FFF`, `--on-deep-2/-3:rgba(255,255,255,.72)` (raised from .55). A later legibility pass forced pure white inside `.on-deep` and `footer` for 1x monitors; if you do that, update the `:root` table too, or the tokens stop describing what renders.
 - `--accent:var(--brand-4)` on light, `var(--brand-2)` on deep (the mid-dark brand step is unreadable on the darkest ground).
-- Never hard-code a near-miss of a token in a pass script (a `#d6ff62` crept in next to the real accent `#D4F285`). Grep for off-token hex values in QA.
+- Never hard-code a near-miss of a token in a pass script (a `#FFB84A` crept in next to the real accent `#FFB547`). Grep for off-token hex values in QA.
 
 **Grounds (classes):** decide the page ground once (here: dark brand colour end to end). `.on-deep` and `.on-tint` alternate so sections separate without a light band; `.on-accent` (accent band), `.on-light`, `.on-white`, `.card-light` (light panel on deep, resets ink to dark). Give `body` an explicit background.
 
@@ -75,7 +75,7 @@ The values below are an example of the token SHAPE that worked: a single brand h
 ## C. Fonts
 
 - **One family for text** (a variable sans with weights 400-700), `font-display:swap`, subset with the font vendor's own `latin` + `latin-ext` `unicode-range` splits (check the licence, e.g. SIL OFL, allows self-hosting). Fallback: `'Brand Sans', -apple-system, 'Segoe UI', Arial, sans-serif` in a `--font-sans` token.
-- **Self-host.** A third-party font CDN loading before consent is a privacy finding. Options: embed woff2 as base64 `@font-face` in source, then have an optimiser lift every data URI into a content-hashed file in `dist/assets/` and add `<link rel="preload" as="font" type="font/woff2" crossorigin>` for the files each page actually uses.
+- **Self-host.** A third-party font CDN loading before consent is a privacy finding. Options: embed woff2 as base64 `@font-face` in source, then have an optimiser lift every data URI into a content-hashed file in `site/_dist/assets/` and add `<link rel="preload" as="font" type="font/woff2" crossorigin>` for the files each page actually uses.
 - **Diacritics:** `latin-ext` covers Czech/Slovak (ěščřžýůďťň) and Polish (ąćęłńśźż); German umlauts/ß are in `latin`. Open heading line-height slightly for stacked diacritics. Never use a fallback or old brand face inside rendered assets (a raster patch once used the new face for text but the retired one for numbers).
 - **Monospace digits, the lesson:**
   - Monospaced figures everywhere read as generic/templated; default all numbers to the sans + `tabular-nums`.
@@ -88,11 +88,11 @@ The values below are an example of the token SHAPE that worked: a single brand h
 
 ## D. Typography rules
 
-**D1. Runtime line breaks (`build/passes/typo/typo.js` + `typo.css`, injected by an idempotent `inject.py`).** Goal: more characters per line, headings broken at sentence boundaries where possible, no short word stranded at a line end.
+**D1. Runtime line breaks (`site/src/assets/typo.js` + `typo.css`, injected by an idempotent `build/injectors/inject-typo.py`).** Goal: more characters per line, headings broken at sentence boundaries where possible, no short word stranded at a line end.
 - Every `h1, h2, .xl, .lg, .md, .pull-quote p` (excluding menu, phone screens, rails, footer, legal, FAQ answers) is split into one `<span class="sent">` (`display:block`) per sentence: **one sentence per heading line**. Short lead paragraphs too (hero body, section-head body, CTA body), only if <= 260 chars and <= 3 sentences. Long running text flows normally.
 - A period after a digit is not a sentence end ("10. Section", "from 1. October" in languages that write ordinals with a dot).
-- Insert U+00A0 (no-break space) after: one-letter words, short prepositions and conjunctions per language (keep cs/sk/pl/de/en regex lists in the script; apply twice to catch chains like "a v"); between digit groups ("600 000"); between a number and its unit (`Kč, €, EUR, zł, PLN, %, M+, min, h, days...`); inside the product name so it never splits.
-- Second widening round after a stray word still ended a line: longer prepositions/conjunctions/short pronouns per language (+ English a/an/I), the first word of every sentence (also across element borders), number + word, ordinal + word, "200 + 100", postcodes.
+- Insert U+00A0 (no-break space) after: one-letter words, short prepositions and conjunctions per language (keep cs/sk/pl/de/en regex lists in the script; apply twice to catch chains like "a v"); between digit groups ("40 000"); between a number and its unit (`Kč, €, EUR, zł, PLN, %, M+, min, h, days...`); inside the product name so it never splits.
+- Second widening round after a stray word still ended a line: longer prepositions/conjunctions/short pronouns per language (+ English a/an/I), the first word of every sentence (also across element borders), number + word, ordinal + word, "50 + 25", postcodes.
 - Only split elements with no element children (text-only), so markup inside headings is safe.
 - CSS: widen caps (`.body` 44 -> 64ch, section heads ~34ch, hero ~26ch, CTA ~32ch); `text-wrap:pretty` on `p, li, summary, .sent, figcaption, cite` (no lone last word); headings keep `balance`.
 - **Why runtime:** language versions are built by exact text-node matching against the source; editing source copy to add `&nbsp;`/`<br>` breaks every translation silently. So: **never hand-insert `&nbsp;`/`<br>`** into sources.
@@ -107,8 +107,8 @@ The values below are an example of the token SHAPE that worked: a single brand h
 **D3. Language length.** German runs longest (compounds, longer phrases). Check every component per language, not just the primary one: a German banner body collided with the phone at 26-28 px; a German pill overlapped the trust line; three German pages scrolled sideways at 320 px until buttons were allowed to wrap and `html` clipped horizontal overflow. A manual break chosen at one font size silently re-wraps at a bigger one: check characters-per-line capacity at the final size.
 
 **D4. Currency and numbers.** Decide once, write it down, enforce it in the build; it flipped three times on a real project.
-- Example rule that stuck: euro AFTER the number with a no-break space in CZ/SK/PL/DE (`5 €`, `1 200 €`), English before with no space (`€5`). Local currencies always after (`125 Kč`, `35 zł`). A build check scans `dist/`: no `€\d` outside EN, no `\d €` in EN.
-- In the English version of a non-euro market, show both: "€5 (CZK 125)".
+- Example rule that stuck: euro AFTER the number with a no-break space in CZ/SK/PL/DE (`8 €`, `1 400 €`), English before with no space (`€8`). Local currencies always after (`200 Kč`, `30 zł`). A build check scans `site/_dist/`: no `€\d` outside EN, no `\d €` in EN.
+- In the English version of a non-euro market, show both: "€8 (CZK 200)".
 - Count-up figures are re-formatted by JS while counting, so dictionaries alone are not enough: give the i18n builder a per-language formatter (thousands U+00A0 + decimal `,` for cs/sk/pl; `.` + `,` for de; `,` + `.` for en; en `%` without a space, "80%"). Animated figures read `data-to/data-prefix/data-suffix/data-dec/data-group`; change `data-to` when the number changes or the old value comes back after the animation.
 - Store ratings differ per market store; show the local one.
 - Fix one spelling for product terms and never decline or split the brand name.
@@ -141,7 +141,7 @@ The values below are an example of the token SHAPE that worked: a single brand h
 - **Different screen per page/slide.** Three pages with the same hero screen read as a stock template.
 - **Flat and sharp.** Tilted/3D phones were dropped. Never sharpen a soft screenshot with an unsharp mask; re-export at 3x instead.
 
-**F2. Pipeline:** design-file export -> `assets/mockups/png3x/<lang>-<screen>.png` -> `apply_mockups.py` overwrites the source images the i18n builders read (same names, same aspect) and any primary-language screen embedded in source pages (matched by exact bytes/base64). Draw the phone frame as a vector/at export resolution rather than upscaling a raster chassis. Keep `backup-old/`. Re-runnable: re-export -> run -> full build. Verify by matching every page x language combination.
+**F2. Pipeline:** design-file export -> `design/mockups/png3x/<lang>-<screen>.png` -> `apply_mockups.py` overwrites the source images the i18n builders read (same names, same aspect) and any primary-language screen embedded in source pages (matched by exact bytes/base64). Draw the phone frame as a vector/at export resolution rather than upscaling a raster chassis. Keep `backup-old/`. Re-runnable: re-export -> run -> full build. Verify by matching every page x language combination.
 - Compositing into a pre-rendered framed phone: find the screen rect once (`fit.py`, template match >= 0.98), paste with a mask so chassis, corners and camera cut-out stay intact.
 - B2B / investor pages get the same real framed screens per language; CSS-drawn phones there had wrong-market content.
 - Decks reuse the same screens by perspective-warping them into each deck's phone.
@@ -160,7 +160,7 @@ The values below are an example of the token SHAPE that worked: a single brand h
 - **Don't swap a whole icon set without a side-by-side.** A swap to the "official" set was fully reverted the next day because the previous icons were preferred. Before any swap, dump every icon-like embedded image to a contact sheet (`sheet3d.py`) and get a yes. Note any build step that anchors on icon hashes; changing those icons breaks it.
 - **Icons vs mockups:** an icon is either clearly apart (>= ~30 px at 1x) or deliberately in front (>= 1/3 over the phone, away from key UI), never grazing the edge. Automate this check for generated creatives.
 - **No icon where the set has none.** If the set covers 6 of 8 menu sections, use none; a half-iconed list reads broken.
-- **Third-party logos are SVG** where one exists (a raster logo looked tiny). Partner strips per market, sources and doubts in `assets/logos/logos.json`; take logos from each company's own site. Logos ride on near-opaque white chips (a translucent "fogged" chip made them unreadable), height-normalised by cap height not width, `pointer-events:none` (not links; a hover lift made them look like buttons). When a partner is dropped, remove it everywhere including HTML/CSS comments (strip comments from `dist/`).
+- **Third-party logos are SVG** where one exists (a raster logo looked tiny). Partner strips per market, sources and doubts in `design/logos/logos.json`; take logos from each company's own site. Logos ride on near-opaque white chips (a translucent "fogged" chip made them unreadable), height-normalised by cap height not width, `pointer-events:none` (not links; a hover lift made them look like buttons). When a partner is dropped, remove it everywhere including HTML/CSS comments (strip comments from `site/_dist/`).
 - **Award badges:** organisers' own sources, newest first, a verified list in one data file. Each mark on a white chip, sized per aspect ratio for equal optical weight (wide 3.7:1 wordmarks small, near-square seals large), title only in `alt`. Fix mattes in the asset (white-matte removal, circular mask). Upscale small seals from the largest original available (one went 90 -> 270 px because it was blurred on every phone). Generate press thumbnails from the logo when the source page has no og:image.
 - Public-funding logos (EU programme marks etc.) only in the markets where they apply, with alts in the right language (a primary-language page once carried another language's alts).
 - **Brand marks:** official SVGs only; never hand-type the wordmark as text. Store badges: flex rows with SVG marks (hand-placed SVG text sat off-centre); measure path bounds for the viewBox (a wrong one clipped the Apple mark).
@@ -264,7 +264,7 @@ The values below are an example of the token SHAPE that worked: a single brand h
 ## L. Keep a contradictions list
 
 Every real build accumulates stale comments and reversed decisions. Keep a short list in the repo and check it before relying on a comment:
-- Comments in source describing behaviour that is gone (e.g. tilt-on-hover after phones went flat; "font X dropped" after it came back for digits). `dist/` is the truth.
+- Comments in source describing behaviour that is gone (e.g. tilt-on-hover after phones went flat; "font X dropped" after it came back for digits). `site/_dist/` is the truth.
 - Token tables in `:root` vs values a later pass forces.
 - Hard-coded near-miss colours in pass scripts.
 - Decision reversals with dates (currency position, tab bar on/off, icon set swap and revert).
@@ -275,12 +275,12 @@ Every real build accumulates stale comments and reversed decisions. Keep a short
 
 ## M. File map (suggested)
 
-- Tokens, components, inline JS: `site/src/index.html` (+ subpages). Generated language pages and `dist/` are never hand-edited.
-- Typography: `build/passes/typo/` (typo.js, typo.css, inject.py).
-- Fonts: `assets/fonts/` + a subsetting/preload pass in `build/passes/`.
-- Mobile CSS/JS, menu tiles, rails: `build/passes/mobile/`.
-- Nav, anchors, smooth scroll: `site/src/js/` (nav.js, links.js).
-- Mockups: `assets/mockups/` (png3x, apply_mockups.py, fit.py, backups).
-- Icons/logos/awards: `assets/icons/`, `assets/logos/` (+ logos.json), `assets/awards/` (+ mkawards.py), official brand SVGs in `assets/brand/`.
+- Tokens, components, inline JS: `site/src/index.html` (+ subpages). Generated language pages and `site/_dist/` are never hand-edited.
+- Typography: `site/src/assets/typo.js` + `typo.css`, injected by `build/injectors/inject-typo.py`.
+- Fonts: `design/fonts/` (originals) + a subsetting/preload pass in `build/passes/`.
+- Mobile CSS/JS, menu tiles, rails: `site/src/assets/mobile.css` + `mobile.js`, injected from `build/injectors/`.
+- Nav, anchors, smooth scroll: `site/src/assets/` (nav.js, links.js).
+- Mockups: `design/mockups/` (png3x, backups) + `build/passes/apply_mockups.py`, `fit.py`.
+- Icons/logos/awards: `design/icons/`, `design/logos/` (+ logos.json), `design/awards/` (+ mkawards.py), official brand SVGs in `design/brand/`.
 - Review/a11y/consent passes: `build/passes/`.
-- QA harness: `build/qa/` (overflow audit, line probe, nav check, forced-dark shots, hero cross-fade test, wheel-scroll nav test).
+- QA harness: `qa/` (overflow audit, line probe, nav check, forced-dark shots, hero cross-fade test, wheel-scroll nav test). The generic part ships with this skill in `scripts/qa/`.
