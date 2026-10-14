@@ -23,6 +23,21 @@ import i18n  # noqa: E402
 import seo  # noqa: E402
 
 
+def rmtree_retry(path):
+    """shutil.rmtree that waits out Windows: an antivirus or indexer briefly holding a just-written file makes
+    rmtree fail with PermissionError or 'directory not empty', which showed up as rare test errors."""
+    for attempt in range(6):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if attempt == 5:
+                raise
+            time.sleep(0.1 * 2 ** attempt)
+
+
 def tree_hash(d):
     h = hashlib.sha256()
     for base, dirs, files in sorted(os.walk(d)):
@@ -43,6 +58,7 @@ class BuildChainTest(unittest.TestCase):
         self.out = os.path.join(self.src, '_dist')
 
     def tearDown(self):
+        rmtree_retry(self.tmp.name)
         self.tmp.cleanup()
 
     def build(self, *extra, date='2026-10-01'):
@@ -79,8 +95,8 @@ class BuildChainTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(self.out, 'assets', 'typo.js')))
         self.assertTrue(os.path.isfile(os.path.join(self.out, 'assets', 'site.css')))
         # the source pages are only read (the build writes lastmod.json, the .build/ lock folder and _dist/, nothing else)
-        shutil.rmtree(self.out)
-        shutil.rmtree(os.path.join(self.src, '.build'))
+        rmtree_retry(self.out)
+        rmtree_retry(os.path.join(self.src, '.build'))
         os.remove(os.path.join(self.src, 'lastmod.json'))
         self.assertEqual(tree_hash(self.src), before)
 
@@ -362,8 +378,8 @@ class BuildChainTest(unittest.TestCase):
     def test_lastmod_history_lives_in_a_committed_file_and_survives_a_clean_checkout(self):
         self.build(date='2026-10-01')
         self.assertTrue(os.path.isfile(os.path.join(self.src, 'lastmod.json')), 'lastmod.json next to the pages')
-        shutil.rmtree(os.path.join(self.src, '.build'), ignore_errors=True)   # what a CI checkout looks like
-        shutil.rmtree(self.out)
+        rmtree_retry(os.path.join(self.src, '.build'))   # what a CI checkout looks like
+        rmtree_retry(self.out)
         self.build(date='2026-10-20')
         self.assertEqual(self.read('sitemap.xml').count('<lastmod>2026-10-01</lastmod>'), 2)
 

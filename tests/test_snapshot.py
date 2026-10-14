@@ -4,15 +4,32 @@
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SCRIPT = os.path.join(os.path.dirname(__file__), '..', '.claude', 'skills', 'website-build',
                       'scripts', 'backup', 'snapshot.py')
 SCRIPT = os.path.abspath(SCRIPT)
 HOOKS = os.path.join(os.path.dirname(__file__), '..', 'examples', 'settings.hooks.json')
+
+
+def rmtree_retry(path):
+    """shutil.rmtree that waits out Windows: an antivirus or indexer briefly holding a just-written file makes
+    rmtree fail with PermissionError or 'directory not empty', which showed up as rare test errors."""
+    for attempt in range(6):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            if attempt == 5:
+                raise
+            time.sleep(0.1 * 2 ** attempt)
 
 
 class SnapshotTest(unittest.TestCase):
@@ -24,6 +41,7 @@ class SnapshotTest(unittest.TestCase):
             self.env.pop(k, None)
 
     def tearDown(self):
+        rmtree_retry(self.root)
         self.tmp.cleanup()
 
     def run_cli(self, *args, stdin=None, env=None):
@@ -236,8 +254,9 @@ class SnapshotTest(unittest.TestCase):
                                input=json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': p}}))
             self.assertEqual(r.returncode, 0)
             self.assertEqual(len(self.versions('site/a.html')), 1)
+            self.assertEqual(os.listdir(other), [], 'nothing is written to the working directory')
         finally:
-            os.rmdir(other)
+            rmtree_retry(other)
 
     def test_hook_never_blocks(self):
         for payload in ('', 'not json', '{"tool_input": {"file_path": "/does/not/exist"}}', '[]'):
