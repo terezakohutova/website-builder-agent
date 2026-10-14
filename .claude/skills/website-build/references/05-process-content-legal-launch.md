@@ -3,7 +3,7 @@
 Everything outside the pure build mechanics that decides whether a new multi-market marketing site
 ships cleanly: who decides what, how feedback is worked, how the sitemap and copy are kept honest,
 what legal/consent must be in place, and how the launch is run. Distilled from a real production
-build and launch of a consumer fintech app site in five languages. Each bullet is a **rule** - why.
+build and launch of a consumer app site in five languages. Each bullet is a **rule** - why.
 Examples are marked as examples; replace them with your project's facts.
 
 ---
@@ -135,7 +135,7 @@ Write these into your project's copy rules file before the first draft; each cau
 - **Launch year vs registration year**: decide which is "founded" in copy and which goes into structured data.
 - **Future launches in future tense** with the date ("from 1 March"); after launch a pass must flip the tense (a countdown removes itself, copy does not). Decks/pitches may use month only; don't copy web strings into decks.
 - **Founder-name spelling comes from the company register and the owner**, never a spellchecker - a proofreading pass "corrected" a founder's surname site-wide.
-- **Currency placement per language** (e.g. `8 €` with a no-break space in most EU languages, `€8` in English). Enforce with a pass and a grep on the output; it flipped three times when not written down.
+- **Currency placement per language** (e.g. `12 €` with a no-break space in most EU languages, `€12` in English). Enforce with a pass and a grep on the output; it flipped three times when not written down.
 - **Reward amounts per market** and their conditions in one table; a FAQ that must hold in every market can omit the amount. Mockups must not contradict the copy (a screen showing a minimum balance next to "I'll send you X").
 - **Licence/regulatory wording copied from the contract or register, per market**, confirmed by the legal owner. Example: "registered with regulator X via provider Y" is not "licensed"; never claim a licence the company itself does not hold.
 - **Third-party brand names**: remove any partner whose affiliate terms forbid publicity (also from HTML/CSS comments - strip comments from the output); replace trademarks with generic categories where in doubt.
@@ -188,7 +188,7 @@ Write these into your project's copy rules file before the first draft; each cau
 
 **Hosting facts to settle early**
 - New hosting project from a private repo; production branch = live site.
-- **Legacy proxy**: the old site/project becomes the catch-all proxy target for every path the new site does not serve (old app pages, wallet pages, old assets). Never redeploy or delete it if it can no longer build.
+- **Legacy proxy**: the old site/project becomes the catch-all proxy target for every path the new site does not serve (old app pages, account pages, old assets). Never redeploy or delete it if it can no longer build.
 - **Back up production** (every live path: status, headers, body hash) and **back up the DNS zone** before any DNS change.
 
 **Launch-date moves**
@@ -214,7 +214,7 @@ Switch
 - [ ] Move the domain(s) to the new project (e.g. only `www`; apex 308 -> `www`; no DNS change if avoidable). Rollback = instant rollback or move the domain back.
 
 After the switch
-- [ ] Re-run the path suite and browser suite on production; test a desktop invite flow and any bank/OAuth callback.
+- [ ] Re-run the path suite and browser suite on production; test a desktop invite flow and any OAuth callback.
 - [ ] Live console sweep: 0 errors on every page before consent.
 - [ ] Submit the sitemap to search consoles (Google, Bing, local engines); request indexing for key URLs (old URLs dominate the index for weeks).
 - [ ] Analytics access, reports and conversions rebuilt on the new URLs; key events marked once they appear.
@@ -234,7 +234,7 @@ After the switch
 - [ ] Licence/regulatory wording per market from the contract/register.
 - [ ] One term per object per language; product-term gender/capitalization.
 - [ ] No banned partner names, trademarks, out-of-scope products, emoji, banned words or dashes; no invented review/quote/feature.
-- [ ] Mockups in the page's language, consistent chrome, no other market's banks/regulators, numbers don't contradict copy.
+- [ ] Mockups in the page's language, consistent chrome, no other market's partners/regulators, numbers don't contradict copy.
 - [ ] Press contacts per language; investor CTAs correct; formal address where decided.
 - [ ] Legal footer complete per market; legal page versions = the single source.
 
@@ -258,7 +258,7 @@ After the switch
 16. **Launch date in one constant + an audit pass; month-only in decks.** - A market was described as "already live" before launch, and three dates circulated in two weeks.
 17. **Regulatory wording from the contract/register, confirmed by the legal owner.** - Wrong regulator and "licence" wording appeared in three markets.
 18. **Strip emoji and comments from ported content and output.** - An imported landing carried emoji; a forbidden partner name sat in CSS comments.
-19. **Per-market screens; check every number in a screenshot.** - Wrong-language screens, other markets' banks and contradicting minimums appeared in mockups.
+19. **Per-market screens; check every number in a screenshot.** - Wrong-language screens, other markets' partners and contradicting minimums appeared in mockups.
 20. **Blocked by a permission/classifier? Hand over the click path, don't work around it.**
 21. **When a rule changes, delete or mark the superseded rule the same day.** - An old rule file contradicted the new one and caused a flip-flop.
 22. **Keep a "contradictions and stale notes" list** at the end of the project reference and resolve each with the owner instead of guessing (consent mode in docs vs live, licence wording vs latest statement, web figures vs fundraising page figures, cutover scope in plan vs log).

@@ -75,7 +75,7 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 | Table | Holds | Lesson |
 |---|---|---|
 | `ENTITY` | footer legal entity per market: name, company IDs, VAT IDs, address in the registry's own format, share capital where law requires it, support mailbox | Copy from the official register, note the source; decide once whether register courts appear |
-| `MONEY` | currency, amounts per market (referral bonus etc.), formatting locale (`de-DE`, `en-IE`) | If EN serves a non-euro market, show both: "€8 (CUR 200)" |
+| `MONEY` | currency, amounts per market (referral bonus etc.), formatting locale (`de-DE`, `en-IE`) | If EN serves a non-euro market, show both, e.g. "€12 (CUR 300)" |
 | `FIGFMT` | thousands/decimal separators per language for animated figures | see trap below |
 | `SOCIAL` | per-market social accounts; fallback to the main ones | |
 | `STORE` | per-market App Store / Play URLs | App Store URL must carry a country segment (`/xx/app/...`); the country-less URL 404'd on desktop |
@@ -83,10 +83,10 @@ Separate **translation** (dictionaries) from **localisation data** - each kind i
 | `REVIEWS` | real store reviews, verbatim, no names, with a source list | Invented testimonials are banned by EU consumer law (UCPD blacklist) |
 | `PARTNERS` / `PRESS` | per-market logos, clips, press contact | Show none rather than an unverified list |
 
-- **Currency sign rule:** pick one per language (e.g. `8 €` with NBSP everywhere except EN `€8`), enforce it with a pass that also covers the SEO data table, and check `_dist/` with a regex. The real build changed this rule three times; write it down and stop.
+- **Currency sign rule:** pick one per language (e.g. `12 €` with NBSP everywhere except EN `€12`), enforce it with a pass that also covers the SEO data table, and check `_dist/` with a regex. The real build changed this rule three times; write it down and stop.
 - **Animated number trap:** count-up scripts rewrite the figure while counting, so dictionaries aren't enough - patch number formatting per language. And figures animate **to `data-to`**: changing the visible text without changing `data-to` brings the old value back after the animation. Static HTML should hold the final value (crawlers read that).
 - Big-number abbreviations per language (`M+`, `Mio.+`, `mln+`) live in the table, not in copy.
-- **Localised screenshots/mockups:** translate app screens in the design tool (one page of copies per language), export PNG at 3x -> WebP. Why PNG, not SVG: design-tool SVG export lost background blur and turned emoji into boxes. Hide market-specific elements that don't exist in other markets (local bank logos, the wrong regulator's logo). Use `@example.com` in login mockups, never a real mail provider.
+- **Localised screenshots/mockups:** translate app screens in the design tool (one page of copies per language), export PNG at 3x -> WebP. Why PNG, not SVG: design-tool SVG export lost background blur and turned emoji into boxes. Hide market-specific elements that don't exist in other markets (local partner logos, the wrong regulator's logo). Use `@example.com` in login mockups, never a real mail provider.
 - **Per-language download links:** a shared `links.js` rewrites every store/download link to that language's attribution campaign, with page and placement ("spot": nav, hero, footer...) as parameters; incoming `utm_*` passed through; paid click IDs only after marketing consent. Tokens live in the tracking doc, not in this reference. On desktop, download buttons open a QR modal on your own page.
 - **Verify QR codes by decoding them** (OpenCV `QRCodeDetector`) per language. A stale "PLACEHOLDER, DOES NOT SCAN" comment sat on working codes and invited someone to "fix" them.
 
@@ -168,13 +168,13 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
   - market status: "now live in Country X" on one page vs a launch countdown on another;
   - user count: "*300,000+ users worldwide*" vs "*300,000+ users in three countries*";
   - volume: "*40M+ transactions*" on the site vs "*35M+*" in the press kit vs "*45M+*" in a social profile;
-  - growth metric: "*70 % of new users come via referral*" vs "*70 % of growth*" (two different metrics);
+  - growth metric: "*X % of new users come via referral*" vs "*X % of growth*" (two different metrics);
   - rating: one market's page showing another market's store rating;
   - three different names for the same regulated provider; two different account-deletion processes;
   - an operating entity whose legal name sounds unrelated to the product, never explained (looks like a scam pattern to a model).
   Fix contradictions **before** adding more schema.
-- **Perception test beats checker scores.** Fetch the key pages without JS as an AI user-agent would, write the answer an assistant would give from that text only, and list every hedge and its cause. Typical causes: business model missing on consumer pages ("free app that pays you" reads as too good to be true), key condition (withdrawal, fees) buried in FAQ, unexplained operator, unsourced superlatives ("bank-level security"), awards without source links, the weakest true rating shown while a stronger true one exists.
-- **Off-site entity data feeds the answers too.** Wikidata, Crunchbase, startup databases, EU/fintech maps, PitchBook-style profiles often carry an old name, founding year or user count. Write the corrections with exact property IDs; on Wikidata declare a conflict of interest. Agents are often blocked from editing these - prepare the text for a human. Add the Wikidata Q-ID to `sameAs` once the item is right.
+- **Perception test beats checker scores.** Fetch the key pages without JS as an AI user-agent would, write the answer an assistant would give from that text only, and list every hedge and its cause. Typical causes: business model missing on consumer pages ("free app with a bonus" and no word on how it earns reads as too good to be true), key condition (withdrawal, fees) buried in FAQ, unexplained operator, unsourced superlatives ("military-grade security"), awards without source links, the weakest true rating shown while a stronger true one exists.
+- **Off-site entity data feeds the answers too.** Wikidata, Crunchbase, startup databases, EU/industry maps, PitchBook-style profiles often carry an old name, founding year or user count. Write the corrections with exact property IDs; on Wikidata declare a conflict of interest. Agents are often blocked from editing these - prepare the text for a human. Add the Wikidata Q-ID to `sameAs` once the item is right.
 - **Extractability:** compare `trafilatura` output on static vs rendered HTML. Facts that only appear after JS are invisible to many fetchers. Inline number+label markup (`<b>300,000+</b><span>users</span>`) extracts as "300,000+users"; numbered steps as "1Send". Keep facts in static HTML and put whitespace or block boundaries between number and label.
 - Crawler access is necessary, not sufficient: allow-all robots + no bot-blocking WAF + fast static HTML.
 - **Never invent GEO signals:** no fake reviews, no fake blog/`Article` just to satisfy a checker, no unsourced "Top 10", no rating not shown on the page, no promised savings amounts. Checkers will dock points for a missing blog/RSS; leave them docked rather than fake it.

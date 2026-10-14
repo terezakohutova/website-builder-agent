@@ -2,11 +2,11 @@
 
 How to structure a NEW multi-language marketing website (static HTML + build scripts, deployed to Vercel or
 a similar static host) when you build it with Claude Code. Distilled from a real production build of a
-5-language site (cs, sk, pl, de, en; ~12 pages x 5 languages + a few market-only pages). Every lesson is
+5-language site (~12 pages x 5 languages + a few market-only pages). Every lesson is
 written as a rule plus the reason: "in a real build, X happened, so do Y".
 
 Placeholders: [Company], [Product], [example.com], [Market A]/[Market B]. Language codes cs/sk/pl/de/en are
-used as examples of a master language (cs) plus four generated variants.
+illustrative: a master language (cs) plus four generated variants. Swap in your own.
 
 ---
 
@@ -109,7 +109,7 @@ my-site/                      # its own git repo from the first file (see sectio
   Fetch **at build time** (the API may send no CORS header for the web origin). Legal fetch **fails the
   build** if the CMS is unreachable; FAQ falls back to a cached copy. Every CMS write: dated backup ->
   write -> read back.
-- **Legacy site behind a proxy:** if an old app/site still serves some paths (webviews, wallet pages, old
+- **Legacy site behind a proxy:** if an old app/site still serves some paths (webviews, account pages, old
   SPA chunks), rewrite only those prefixes to it. Never redeploy or delete the legacy project during cutover.
 
 ### Build-time tools

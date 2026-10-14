@@ -7,25 +7,65 @@ three things that kept the original build honest, as working code: a browser QA 
 install, a hook that versions every file Claude edits, and a small reference build chain (i18n, runtime
 typography, SEO, sitemap, build lock). All three are tested in CI on Linux and Windows.
 
-The rules come from building, translating into five languages, launching and hardening a real marketing site
-for a mobile app with Claude Code. That site, its company and its figures are not in this repository; what is
-left is each rule with the incident that produced it.
+**Why this exists.** On the real build, a layout fix passed a spot check and then failed in 18 of 24 page x
+width combinations. A page that renders proves nothing. This repository turns that lesson, and every other
+one from building, translating into five languages and launching a marketing site for a mobile app, into
+rules an agent follows and scripts that measure the result. The original site, its company and its figures
+are not in here.
+
+<p align="center">
+  <img src="examples/sample-qa-report/shots/index.html.1440.00.png" width="560" alt="The sample site's home page at 1440 px, as captured by shots.mjs">
+  <img src="examples/sample-qa-report/shots/index.html.390.00.png" width="156" alt="The same page at 390 px">
+</p>
+
+A recorded run on the bundled sample site ([full report](examples/sample-qa-report/README.md)):
+
+| step | exit | result | time |
+|---|---|---|---|
+| build | 0 | as expected | 0.8 s |
+| jscheck | 0 | as expected | 0.2 s |
+| audit (3 pages x 8 widths) | 0 | as expected | 16.0 s |
+| anchors-390 | 0 | as expected | 7.2 s |
+| anchors-1440 | 0 | as expected | 7.5 s |
+| content-struct | 0 | as expected | 3.1 s |
+| content-heads-390 | 0 | as expected | 3.3 s |
+| modes-reduced | 0 | as expected | 2.8 s |
+| shots | 0 | as expected | 3.3 s |
+| wheel | 0 | as expected | 6.5 s |
+| console-sweep | 0 | as expected | 6.5 s |
 
 ## Try it in one minute
 
 Needs Node 22+, Python 3.8+ and Chrome (or Chromium). Nothing to install.
 
 ```bash
-git clone <this repo> && cd website-builder-agent
+git clone https://github.com/terezakohutova/website-builder-agent.git && cd website-builder-agent
 python examples/build-chain/build.py                                       # English master -> EN + DE in _dist
 node .claude/skills/website-build/scripts/qa/audit.mjs examples/sample-site/_dist
-# ...
-# 3 pages x 2 widths, 0 with issues
+```
 
-node --test --test-concurrency=1 "tests/*.test.mjs"   # 76 tests, about 1 minute (a CI-only and a POSIX-only test skip elsewhere)
-python -m unittest discover -s tests                  # 37 tests: snapshot.py and the build chain
+The audit prints one line per page and width, then a total:
+
+```text
+ok   index-de.html @1440
+ok   index-de.html @390
+ok   index.html @1440
+ok   index.html @390
+ok   privacy.html @1440
+ok   privacy.html @390
+
+3 pages x 2 widths, 0 with issues
+```
+
+Then the test suites:
+
+```bash
+node --test --test-concurrency=1 "tests/*.test.mjs"   # QA harness, about a minute
+python -m unittest discover -s tests                  # snapshot.py and the build chain
 python tests/check_links.py                           # every relative link in the docs resolves
 ```
+
+Locally, one CI-only test and one POSIX-only test skip.
 
 The Node tests are behaviour tests: each QA script runs against small fixture pages (served from `file://` or
 an in-process HTTP server) that must pass or must fail with a named finding, plus the exit-code contract,
@@ -33,10 +73,6 @@ argument handling, the CDP client's timeouts and buffers, and jscheck's parser. 
 tests are skipped locally and fail under `CI=true`. The axe tests run when axe-core is found (`AXE_PATH`, or
 `node_modules/axe-core`; CI installs it) and are skipped otherwise. `--test-concurrency=1` keeps it to one
 Chrome at a time.
-
-[`examples/sample-qa-report/`](examples/sample-qa-report/README.md) holds a recorded run: the sample site
-built by the reference chain, then 3 pages x 8 widths, anchors, content probes, reduced motion, wheel,
-console sweep and screenshots, with the Chrome, Node and Python versions it ran on.
 
 ## What's inside
 
