@@ -195,6 +195,21 @@ title, description, robots (`index,follow,max-image-preview:large,max-snippet:-1
 7. **Automated checks each run:** GEO checkers (e.g. geo-optimizer, `@glincker/geo-audit`), llms.txt reference parser, trafilatura static-vs-rendered fact list, schema vocabulary check, the figure-consistency report, `curl -A "GPTBot"` (and other AI UAs) expecting 200 and no `X-Robots-Tag` on production.
 8. **Perception test** when you have no engine access (or as a quick pre-check): as in 3.2.
 
+### GEO / AI-readiness checkers: how to run them and what they get wrong
+
+Run at least the first three after every content or `<head>` change. Read each finding against this table before "fixing" anything: on a non-English or multilingual site, a good share of what these tools flag is the tool, not the site. Never chase 100 by faking content (no fake blog, RSS feed or author bylines).
+
+| Tool | How to run | Good for | Known false positives / quirks |
+|---|---|---|---|
+| **isready.ai** (web; free deep scan covers 10 pages) | paste the domain; the report URL is shareable | Crawler access, raw-HTML rendering, structured data, content depth per template, plus a real-browser "smart agent" accessibility snapshot | Counts numeric character references in `<title>`/meta as text (`&#269;` = 6 chars), so accented titles look "too long": **write head tags in plain UTF-8**. Counts deliberate `alt=""` on decorative images as missing alt: leave them. Content depth wants ~800 words per page. |
+| **geo-optimizer** (PyPI `geo-optimizer-skill`, CLI `geo`) | `pip install geo-optimizer-skill`, then `geo --lang en audit --url <url>` and `geo access --url <url>` | Broadest checklist: llms.txt, `ai/*.json`, `/.well-known/ai.txt`, schema, trust stack, per-engine estimates; `access` = AI-bot fetch audit with TTFB | Wants an RSS/Atom feed even without a blog. Reads only `@type[0]`, so put `FAQPage` first in a `@type` array. A one-off TTFB warning is often a cold CDN cache: re-run before acting. |
+| **@glincker/geo-audit** (npm) | `npx @glincker/geo-audit <url> --no-recs` | Quick A-F grade for structured data and technical readiness | Reads `<link rel="alternate" type="text/plain" href="/llms.txt">` as an RSS feed "with the wrong type". Reports "no FAQPage schema" when `@type` is an array. Heading-skip warnings can come from headings inside a hidden nav menu. |
+| **ClayHog GEO audit** (web) | clayhog.com/tools/geo-audit | Technical rows (crawlers, llms.txt, schema, tech SEO) and the per-passage citability breakdown as a copy review | E-E-A-T, citability and brand scores are English keyword heuristics (counts "you/your", looks for `/about`, bylines, review-site links): meaningless on non-English pages. |
+| **Topify GEO score** (web) | topify.ai/tools/geo-score-checker | 0-100 across bot access, schema, content | Returned a server error when tried; retry. |
+| **llmscout** (PyPI `llmscout-cli`) | `llmscout init` in a project dir, then `llmscout check` | Local project checks | Config-driven, not a quick URL check. |
+
+Other free checkers worth a try: aicrawlercheck.com (hundreds of crawler user agents), websiteaeogeochecker.com, webaloha.co AI search visibility checker, glavia.agency GEO checker, lightsite.ai GEO checker, the "AEO/GEO Audit Tool" Chrome extension. None of them measure real citations; for that use the prompt-set method above.
+
 ---
 
 ## 4. Performance

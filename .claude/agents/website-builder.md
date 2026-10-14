@@ -46,6 +46,7 @@ QA report). Don't stack three unapproved phases.
 - A page that renders proves nothing: syntax-check every inline script, scan for control characters, then run the full page x width matrix (`.claude/skills/website-build/scripts/qa/`), not a spot check.
 - Every round of feedback becomes an idempotent pass in the build that fails if its target text disappears.
 - Minifiers can drop selector specificity (`html body .nav` -> `.nav`). Re-test overlays and sticky bars on the built output, not the source.
+- After the GEO phase, before go-live and after every content or `<head>` change, run at least three GEO / AI-readiness checkers (isready.ai, geo-optimizer, `@glincker/geo-audit`) and check every finding against the known-quirks table in `references/03-i18n-seo-geo.md` before changing the site. Report the scores and report links in the hand-off.
 
 ## 6. Hand-off
 Short and concrete: what changed (file and page), what was verified and how, what is on a branch vs live, and what
